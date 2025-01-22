@@ -10,25 +10,110 @@ export interface ContentGeneratorConfig {
   drugName: string;
   condition: string;
   competitorContent: string;
+  legalDeadline?: string;
+}
+
+interface TemplateData {
+  campaign: CampaignInfo;
+  evidence: MedicalEvidence;
+  disclaimer: DisclaimerInfo;
+  sections: {
+    hero: boolean;
+    benefits: boolean;
+    evidence: boolean;
+    settlement: boolean;
+    callBanner: boolean;
+  };
+}
+
+export async function extractContentFromCompetitor(
+  content: string
+): Promise<{
+  drugInfo: { name: string; condition: string };
+  structuredContent: string;
+}> {
+  const prompt = `
+    Analyze the following legal marketing content and extract:
+    1. The drug/product name
+    2. The medical condition or injury
+    3. Key information organized into these categories:
+       - Medical evidence and studies
+       - Qualification criteria
+       - Symptoms and complications
+       - Settlement information
+       - Timeline and deadlines
+       - Statistical data
+
+    Format the response as a JSON object with these keys:
+    {
+      "drugInfo": {
+        "name": "Drug name",
+        "condition": "Medical condition"
+      },
+      "content": {
+        "evidence": ["Study findings"],
+        "qualifications": ["Criteria"],
+        "symptoms": ["List of symptoms"],
+        "settlement": {
+          "amounts": ["Settlement amounts"],
+          "process": ["Settlement process steps"]
+        },
+        "timeline": "Important dates and deadlines",
+        "statistics": ["Key statistics"]
+      }
+    }
+
+    Content to analyze:
+    ${content}
+  `;
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are a legal content analyst specializing in mass tort campaigns. Extract and organize relevant information while removing competitor-specific details.",
+      },
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+    response_format: { type: "json_object" },
+  });
+
+  if (!response.choices[0].message.content) {
+    throw new Error("Failed to get content from OpenAI");
+  }
+
+  const parsed = JSON.parse(response.choices[0].message.content);
+  return {
+    drugInfo: parsed.drugInfo,
+    structuredContent: JSON.stringify(parsed.content, null, 2),
+  };
 }
 
 export async function generateCampaignContent(
   config: ContentGeneratorConfig
-): Promise<{
-  campaign: CampaignInfo;
-  evidence: MedicalEvidence;
-  disclaimer: DisclaimerInfo;
-}> {
+): Promise<TemplateData> {
   const prompt = `
     Create a legal marketing campaign for ${config.drugName} related to ${config.condition}.
     Use the following competitor content as reference but create unique content:
     ${config.competitorContent}
 
-    Respond with a JSON object containing the following structure:
+    Create a campaign that follows our established template structure with these requirements:
+    1. Compelling headlines and clear call-to-actions
+    2. Evidence-based medical claims with citations
+    3. Clear qualification criteria
+    4. Settlement information and timeline
+    5. Urgency indicators ${config.legalDeadline ? `(Deadline: ${config.legalDeadline})` : ''}
+
+    Respond with a JSON object containing this structure:
     {
       "campaign": {
         "title": "Main campaign title",
-        "phone": "(800) 555-0123", // Use this default number
+        "phone": "(800) 555-0123",
         "description": "Main description with key study findings",
         "mainHeadline": "Attention-grabbing headline",
         "subHeadline": "Supporting headline with key facts",
@@ -56,6 +141,13 @@ export async function generateCampaignContent(
         "legalDisclaimer": "Legal disclaimer text",
         "medicalDisclaimer": "Medical advice disclaimer",
         "studyCitation": "Full study citation"
+      },
+      "sections": {
+        "hero": true,
+        "benefits": true,
+        "evidence": true,
+        "settlement": true,
+        "callBanner": true
       }
     }
   `;
@@ -76,42 +168,21 @@ export async function generateCampaignContent(
     response_format: { type: "json_object" },
   });
 
+  if (!response.choices[0].message.content) {
+    throw new Error("Failed to get content from OpenAI");
+  }
+
   return JSON.parse(response.choices[0].message.content);
 }
 
-export async function extractContentFromCompetitor(
-  content: string
-): Promise<string> {
-  const prompt = `
-    Extract and organize the following content from a competitor's website.
-    Remove any specific law firm information, contact details, or direct calls-to-action.
-    Focus on:
-    1. Medical condition information
-    2. Scientific studies and evidence
-    3. Qualification criteria
-    4. Settlement information
-    5. Timeline details
+export async function generateContentFromUrl(url: string): Promise<TemplateData> {
+  // First, extract and structure the competitor content
+  const extractedData = await extractContentFromCompetitor(url);
 
-    Content to process:
-    ${content}
-
-    Respond with a clean, organized version of the content without any marketing language.
-  `;
-
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a content analyst specializing in legal marketing. Extract and organize relevant information while removing competitor-specific details.",
-      },
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
+  // Then generate our campaign content using the structured data
+  return generateCampaignContent({
+    drugName: extractedData.drugInfo.name,
+    condition: extractedData.drugInfo.condition,
+    competitorContent: extractedData.structuredContent,
   });
-
-  return response.choices[0].message.content;
 }
