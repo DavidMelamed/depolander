@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { CAMPAIGN_INFO } from "@/lib/constants";
-import { Check, AlertTriangle } from "lucide-react";
+import { Check, AlertTriangle, PhoneCall, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function BenefitsSection() {
   return (
@@ -19,6 +20,31 @@ export default function BenefitsSection() {
                 </div>
               ))}
             </div>
+
+            {/* Emergency Call Box */}
+            <Card className="bg-destructive text-destructive-foreground">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <AlertTriangle className="h-6 w-6" />
+                  <h3 className="text-xl font-semibold">Urgent Legal Alert</h3>
+                </div>
+                <p className="mb-4">Time is critical in mass tort cases. Don't risk losing your right to compensation.</p>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    <p>Free 24/7 Case Evaluation</p>
+                  </div>
+                  <Button 
+                    className="w-full bg-white text-destructive hover:bg-white/90"
+                    size="lg"
+                    onClick={() => window.location.href = `tel:${CAMPAIGN_INFO.phone}`}
+                  >
+                    <PhoneCall className="mr-2 h-5 w-5" />
+                    Call {CAMPAIGN_INFO.phone}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             <div className="bg-muted p-6 rounded-lg">
               <h3 className="text-xl font-semibold mb-4">Key Facts About the Lawsuit</h3>

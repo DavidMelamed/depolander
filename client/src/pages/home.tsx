@@ -2,6 +2,7 @@ import HeroSection from "@/components/hero-section";
 import BenefitsSection from "@/components/benefits-section";
 import EvidenceSection from "@/components/evidence-section";
 import SettlementSection from "@/components/settlement-section";
+import CallBanner from "@/components/call-banner";
 import { CAMPAIGN_INFO, DISCLAIMER } from "@/lib/constants";
 
 export default function Home() {
@@ -16,14 +17,14 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="pt-16">
+      <main className="pt-16 pb-20">
         <HeroSection />
         <BenefitsSection />
         <EvidenceSection />
         <SettlementSection />
       </main>
 
-      <footer className="bg-muted py-8 mt-8">
+      <footer className="bg-muted py-8">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <div className="text-sm text-muted-foreground space-y-4">
@@ -38,6 +39,8 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      <CallBanner />
     </div>
   );
 }
