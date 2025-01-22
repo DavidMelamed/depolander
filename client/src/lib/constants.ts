@@ -1,4 +1,6 @@
-export const CAMPAIGN_INFO = {
+import type { CampaignInfo, MedicalEvidence, TrustIndicator } from "./types/campaign";
+
+export const CAMPAIGN_INFO: CampaignInfo = {
   title: "Depo-Provera Brain Tumor Lawsuit Claims",
   phone: "(800) 555-0123",
   description: "A groundbreaking scientific study reveals that Depo-Provera users face a 5.5 times higher risk of developing meningioma brain tumors. If you or a loved one used Depo-Provera and were diagnosed with a meningioma, you may be entitled to significant compensation.",
@@ -32,10 +34,22 @@ export const CAMPAIGN_INFO = {
     { number: "550%", label: "Increased Risk" },
     { number: "30+", label: "Years on Market" },
     { number: "100s", label: "Active Cases" }
-  ]
+  ],
+  settlementInfo: {
+    averageAmount: "Estimated $150,000 to $500,000",
+    range: "$50,000 to over $1,000,000",
+    timeline: "12-24 months from filing to settlement",
+    process: [
+      "Free initial case evaluation",
+      "Medical record review by expert attorneys",
+      "Case filing and documentation",
+      "Settlement negotiations or trial preparation",
+      "Resolution and compensation distribution"
+    ]
+  }
 };
 
-export const TRUST_BADGES = [
+export const TRUST_BADGES: TrustIndicator[] = [
   { title: "Free Case Evaluation", icon: "PhoneCall" },
   { title: "No Fees Unless You Win", icon: "Shield" },
   { title: "24/7 Legal Support", icon: "Clock" },
@@ -55,7 +69,7 @@ export const REVIEWS = [
   }
 ];
 
-export const MEDICAL_EVIDENCE = {
+export const MEDICAL_EVIDENCE: MedicalEvidence = {
   studyTitle: "Association Between Medroxyprogesterone Acetate and Intracranial Meningioma Risk",
   studyDate: "2024",
   studyUrl: "https://www.example.com/depo-provera-study", // Replace with actual study URL

@@ -1,6 +1,7 @@
 import HeroSection from "@/components/hero-section";
 import BenefitsSection from "@/components/benefits-section";
 import EvidenceSection from "@/components/evidence-section";
+import SettlementSection from "@/components/settlement-section";
 import { CAMPAIGN_INFO, DISCLAIMER } from "@/lib/constants";
 
 export default function Home() {
@@ -19,6 +20,7 @@ export default function Home() {
         <HeroSection />
         <BenefitsSection />
         <EvidenceSection />
+        <SettlementSection />
       </main>
 
       <footer className="bg-muted py-8 mt-8">
