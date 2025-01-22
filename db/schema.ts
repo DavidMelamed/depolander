@@ -19,6 +19,8 @@ export const contentVersions = pgTable("content_versions", {
   content: jsonb("content").notNull(),
   version: integer("version").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  language: text("language").notNull().default('en'),
+  sourceVersionId: integer("source_version_id").references(() => contentVersions.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -44,10 +46,26 @@ export const updateSuggestions = pgTable("update_suggestions", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const languageVersions = pgTable("language_versions", {
+  id: serial("id").primaryKey(),
+  contentVersionId: integer("content_version_id").notNull().references(() => contentVersions.id),
+  language: text("language").notNull(),
+  translatedContent: jsonb("translated_content").notNull(),
+  lastTranslated: timestamp("last_translated").defaultNow().notNull(),
+  status: text("status").notNull(), // 'pending', 'completed', 'needs_review'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Define relations
-export const contentVersionsRelations = relations(contentVersions, ({ many }) => ({
+export const contentVersionsRelations = relations(contentVersions, ({ many, one }) => ({
   refreshSchedules: many(refreshSchedules),
   updateSuggestions: many(updateSuggestions),
+  languageVersions: many(languageVersions),
+  sourceVersion: one(contentVersions, {
+    fields: [contentVersions.sourceVersionId],
+    references: [contentVersions.id],
+  }),
 }));
 
 export const refreshSchedulesRelations = relations(refreshSchedules, ({ one }) => ({
@@ -60,6 +78,13 @@ export const refreshSchedulesRelations = relations(refreshSchedules, ({ one }) =
 export const updateSuggestionsRelations = relations(updateSuggestions, ({ one }) => ({
   contentVersion: one(contentVersions, {
     fields: [updateSuggestions.contentVersionId],
+    references: [contentVersions.id],
+  }),
+}));
+
+export const languageVersionsRelations = relations(languageVersions, ({ one }) => ({
+  contentVersion: one(contentVersions, {
+    fields: [languageVersions.contentVersionId],
     references: [contentVersions.id],
   }),
 }));
@@ -84,3 +109,8 @@ export const insertUpdateSuggestionSchema = createInsertSchema(updateSuggestions
 export const selectUpdateSuggestionSchema = createSelectSchema(updateSuggestions);
 export type InsertUpdateSuggestion = typeof updateSuggestions.$inferInsert;
 export type SelectUpdateSuggestion = typeof updateSuggestions.$inferSelect;
+
+export const insertLanguageVersionSchema = createInsertSchema(languageVersions);
+export const selectLanguageVersionSchema = createSelectSchema(languageVersions);
+export type InsertLanguageVersion = typeof languageVersions.$inferInsert;
+export type SelectLanguageVersion = typeof languageVersions.$inferSelect;

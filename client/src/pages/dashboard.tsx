@@ -22,27 +22,24 @@ interface ContentVersion {
   content: any;
   version: number;
   isActive: boolean;
+  language: string;
   createdAt: string;
   updatedAt: string;
 }
 
-interface UpdateSuggestion {
+interface LanguageVersion {
   id: number;
   contentVersionId: number;
-  suggestedChanges: {
-    changes: Array<{
-      field: string;
-      currentValue: string;
-      suggestedValue: string;
-      reason: string;
-      priority: "low" | "medium" | "high";
-    }>;
-    summary: string;
-  };
-  reason: string;
-  priority: "low" | "medium" | "high";
-  status: "pending" | "approved" | "rejected";
-  createdAt: string;
+  language: string;
+  translatedContent: any;
+  lastTranslated: string;
+  status: "pending" | "completed" | "needs_review";
+}
+
+interface Language {
+  code: string;
+  name: string;
+  nativeName: string;
 }
 
 export default function Dashboard() {
@@ -54,10 +51,68 @@ export default function Dashboard() {
     queryKey: ["/api/content-versions"],
   });
 
-  // Fetch suggestions for selected version
-  const { data: suggestions } = useQuery<UpdateSuggestion[]>({
-    queryKey: ["/api/content-versions", selectedVersion, "suggestions"],
+  // Fetch supported languages
+  const { data: languages } = useQuery<Language[]>({
+    queryKey: ["/api/languages"],
+  });
+
+  // Fetch translations for selected version
+  const { data: translations } = useQuery<LanguageVersion[]>({
+    queryKey: ["/api/content-versions", selectedVersion, "translations"],
     enabled: !!selectedVersion,
+  });
+
+  // Create translation
+  const createTranslation = useMutation({
+    mutationFn: async ({
+      id,
+      language,
+    }: {
+      id: number;
+      language: string;
+    }) => {
+      const res = await fetch(`/api/content-versions/${id}/translate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/content-versions", selectedVersion, "translations"],
+      });
+      toast({
+        title: "Success",
+        description: "Translation created",
+      });
+    },
+  });
+
+  // Validate translation
+  const validateTranslation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/language-versions/${id}/validate`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.isValid) {
+        toast({
+          title: "Success",
+          description: "Translation is valid",
+        });
+      } else {
+        toast({
+          title: "Warning",
+          description: `Found ${data.issues.length} issues with the translation`,
+          variant: "destructive",
+        });
+      }
+    },
   });
 
   // Create new content version
@@ -125,6 +180,31 @@ export default function Dashboard() {
     },
   });
 
+  // Fetch suggestions for selected version
+  const { data: suggestions } = useQuery<UpdateSuggestion[]>({
+    queryKey: ["/api/content-versions", selectedVersion, "suggestions"],
+    enabled: !!selectedVersion,
+  });
+
+  interface UpdateSuggestion {
+    id: number;
+    contentVersionId: number;
+    suggestedChanges: {
+      changes: Array<{
+        field: string;
+        currentValue: string;
+        suggestedValue: string;
+        reason: string;
+        priority: "low" | "medium" | "high";
+      }>;
+      summary: string;
+    };
+    reason: string;
+    priority: "low" | "medium" | "high";
+    status: "pending" | "approved" | "rejected";
+    createdAt: string;
+  }
+
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-8">Content Management Dashboard</h1>
@@ -135,6 +215,7 @@ export default function Dashboard() {
           <TabsTrigger value="manage">Manage Content</TabsTrigger>
         </TabsList>
 
+        {/* Create Content Tab */}
         <TabsContent value="create">
           <Card>
             <CardHeader>
@@ -165,6 +246,7 @@ export default function Dashboard() {
           </Card>
         </TabsContent>
 
+        {/* Manage Content Tab */}
         <TabsContent value="manage">
           <div className="grid gap-4">
             <Card>
@@ -181,8 +263,8 @@ export default function Dashboard() {
                             {version.drugName} - {version.condition}
                           </h3>
                           <p className="text-sm text-gray-500">
-                            Version {version.version} • Created{" "}
-                            {new Date(version.createdAt).toLocaleDateString()}
+                            Version {version.version} • {version.language.toUpperCase()} •
+                            Created {new Date(version.createdAt).toLocaleDateString()}
                           </p>
                         </div>
                         <div className="space-x-2">
@@ -190,16 +272,90 @@ export default function Dashboard() {
                             onClick={() => setSelectedVersion(version.id)}
                             variant="outline"
                           >
-                            View Suggestions
-                          </Button>
-                          <Button
-                            onClick={() => analyzeContent.mutate(version.id)}
-                          >
-                            Analyze Content
+                            Manage Translations
                           </Button>
                         </div>
                       </div>
 
+                      {selectedVersion === version.id && (
+                        <div className="mt-4 space-y-4">
+                          <h4 className="font-semibold">Translations</h4>
+
+                          {/* Add New Translation */}
+                          <Card className="p-4">
+                            <h5 className="font-medium mb-2">Add Translation</h5>
+                            <div className="flex gap-2">
+                              <Select
+                                onValueChange={(value) =>
+                                  createTranslation.mutate({
+                                    id: version.id,
+                                    language: value,
+                                  })
+                                }
+                              >
+                                <SelectTrigger className="w-[200px]">
+                                  <SelectValue placeholder="Select language" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {languages?.map((lang) => (
+                                    <SelectItem
+                                      key={lang.code}
+                                      value={lang.code}
+                                      disabled={translations?.some(
+                                        (t) => t.language === lang.code
+                                      )}
+                                    >
+                                      {lang.name} ({lang.nativeName})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </Card>
+
+                          {/* Existing Translations */}
+                          {translations?.map((translation) => (
+                            <Card key={translation.id} className="p-4">
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <h5 className="font-medium">
+                                    {languages?.find(
+                                      (l) => l.code === translation.language
+                                    )?.name}{" "}
+                                    ({translation.language.toUpperCase()})
+                                  </h5>
+                                  <p className="text-sm text-gray-500">
+                                    Last updated:{" "}
+                                    {new Date(
+                                      translation.lastTranslated
+                                    ).toLocaleDateString()}
+                                  </p>
+                                  <p
+                                    className={`text-sm ${
+                                      translation.status === "completed"
+                                        ? "text-green-500"
+                                        : translation.status === "needs_review"
+                                        ? "text-yellow-500"
+                                        : "text-blue-500"
+                                    }`}
+                                  >
+                                    Status: {translation.status}
+                                  </p>
+                                </div>
+                                <Button
+                                  onClick={() =>
+                                    validateTranslation.mutate(translation.id)
+                                  }
+                                  variant="outline"
+                                  size="sm"
+                                >
+                                  Validate
+                                </Button>
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
                       {selectedVersion === version.id && suggestions && (
                         <div className="mt-4 space-y-2">
                           <h4 className="font-semibold">Update Suggestions</h4>
