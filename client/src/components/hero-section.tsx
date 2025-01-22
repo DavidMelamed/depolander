@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { CAMPAIGN_INFO } from "@/lib/constants";
 import { Phone, AlertCircle } from "lucide-react";
+import EligibilitySurvey from "./eligibility-survey";
 
 export default function HeroSection() {
   return (
@@ -34,14 +35,7 @@ export default function HeroSection() {
               Call Now: {CAMPAIGN_INFO.phone}
             </Button>
 
-            <Button
-              size="lg"
-              variant="secondary"
-              className="w-full sm:w-auto"
-              onClick={() => document.getElementById('lead-form')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              Free Case Review
-            </Button>
+            <EligibilitySurvey />
           </div>
 
           <p className="text-sm md:text-base opacity-90">

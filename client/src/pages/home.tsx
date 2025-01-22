@@ -1,7 +1,6 @@
 import HeroSection from "@/components/hero-section";
 import BenefitsSection from "@/components/benefits-section";
-import TrustIndicators from "@/components/trust-indicators";
-import LeadForm from "@/components/lead-form";
+import EvidenceSection from "@/components/evidence-section";
 import { CAMPAIGN_INFO, DISCLAIMER } from "@/lib/constants";
 
 export default function Home() {
@@ -19,8 +18,7 @@ export default function Home() {
       <main className="pt-16">
         <HeroSection />
         <BenefitsSection />
-        <TrustIndicators />
-        <LeadForm />
+        <EvidenceSection />
       </main>
 
       <footer className="bg-muted py-8 mt-8">
