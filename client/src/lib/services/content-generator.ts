@@ -26,6 +26,31 @@ interface TemplateData {
   };
 }
 
+interface ExtractedData {
+  drugInfo: {
+    name: string;
+    condition: string;
+    type: string;
+    manufacturer?: string;
+  };
+  content: {
+    evidence: string[];
+    qualifications: string[];
+    symptoms: string[];
+    settlement: {
+      amounts: string[];
+      process: string[];
+      status: string;
+    };
+    timeline: string;
+    statistics: string[];
+    safetyInfo: {
+      warnings: string[];
+      contraindications: string[];
+    };
+  };
+}
+
 export async function extractContentFromCompetitor(
   content: string
 ): Promise<{
@@ -33,34 +58,54 @@ export async function extractContentFromCompetitor(
   structuredContent: string;
 }> {
   const prompt = `
-    Analyze the following legal marketing content and extract:
-    1. The drug/product name
-    2. The medical condition or injury
-    3. Key information organized into these categories:
-       - Medical evidence and studies
-       - Qualification criteria
-       - Symptoms and complications
-       - Settlement information
-       - Timeline and deadlines
-       - Statistical data
+    Analyze the following legal marketing content with a focus on accuracy and compliance. Extract and structure:
+    1. Drug/Product Information:
+       - Name and type
+       - Medical condition or injury
+       - Manufacturer (if mentioned)
 
-    Format the response as a JSON object with these keys:
-    {
-      "drugInfo": {
-        "name": "Drug name",
-        "condition": "Medical condition"
-      },
-      "content": {
-        "evidence": ["Study findings"],
-        "qualifications": ["Criteria"],
-        "symptoms": ["List of symptoms"],
-        "settlement": {
-          "amounts": ["Settlement amounts"],
-          "process": ["Settlement process steps"]
-        },
-        "timeline": "Important dates and deadlines",
-        "statistics": ["Key statistics"]
-      }
+    2. Medical & Scientific Information:
+       - Clinical studies and research findings
+       - FDA warnings or recalls
+       - Documented side effects
+       - Safety information
+
+    3. Legal Information:
+       - Qualification criteria
+       - Settlement status and amounts
+       - Filing deadlines
+       - Legal precedents
+
+    4. Statistical Data:
+       - Number of cases
+       - Success rates
+       - Settlement ranges
+       - Demographic information
+
+    Format the response as a strict JSON object matching this TypeScript interface:
+    interface ExtractedData {
+      drugInfo: {
+        name: string;
+        condition: string;
+        type: string;
+        manufacturer?: string;
+      };
+      content: {
+        evidence: string[];
+        qualifications: string[];
+        symptoms: string[];
+        settlement: {
+          amounts: string[];
+          process: string[];
+          status: string;
+        };
+        timeline: string;
+        statistics: string[];
+        safetyInfo: {
+          warnings: string[];
+          contraindications: string[];
+        };
+      };
     }
 
     Content to analyze:
@@ -73,7 +118,7 @@ export async function extractContentFromCompetitor(
       {
         role: "system",
         content:
-          "You are a legal content analyst specializing in mass tort campaigns. Extract and organize relevant information while removing competitor-specific details.",
+          "You are a legal content analyst specializing in mass tort campaigns. Extract and organize relevant information while ensuring accuracy and compliance with legal marketing regulations. Remove competitor-specific details and focus on factual information.",
       },
       {
         role: "user",
@@ -87,9 +132,12 @@ export async function extractContentFromCompetitor(
     throw new Error("Failed to get content from OpenAI");
   }
 
-  const parsed = JSON.parse(response.choices[0].message.content);
+  const parsed = JSON.parse(response.choices[0].message.content) as ExtractedData;
   return {
-    drugInfo: parsed.drugInfo,
+    drugInfo: {
+      name: parsed.drugInfo.name,
+      condition: parsed.drugInfo.condition,
+    },
     structuredContent: JSON.stringify(parsed.content, null, 2),
   };
 }
@@ -98,57 +146,69 @@ export async function generateCampaignContent(
   config: ContentGeneratorConfig
 ): Promise<TemplateData> {
   const prompt = `
-    Create a legal marketing campaign for ${config.drugName} related to ${config.condition}.
-    Use the following competitor content as reference but create unique content:
+    Create a comprehensive and compliant legal marketing campaign for ${config.drugName} related to ${config.condition}.
+    Use this structured competitor content as reference but create unique content:
     ${config.competitorContent}
 
-    Create a campaign that follows our established template structure with these requirements:
-    1. Compelling headlines and clear call-to-actions
-    2. Evidence-based medical claims with citations
-    3. Clear qualification criteria
-    4. Settlement information and timeline
-    5. Urgency indicators ${config.legalDeadline ? `(Deadline: ${config.legalDeadline})` : ''}
+    Requirements:
+    1. Content Structure:
+       - Clear, factual headlines focusing on informing potential clients
+       - Evidence-based medical claims with proper citations
+       - Detailed qualification criteria
+       - Current settlement information and timeline
+       - Clear call-to-actions
+       ${config.legalDeadline ? `- Urgency messaging regarding deadline: ${config.legalDeadline}` : ''}
 
-    Respond with a JSON object containing this structure:
-    {
-      "campaign": {
-        "title": "Main campaign title",
-        "phone": "(800) 555-0123",
-        "description": "Main description with key study findings",
-        "mainHeadline": "Attention-grabbing headline",
-        "subHeadline": "Supporting headline with key facts",
-        "symptoms": ["list", "of", "symptoms"],
-        "qualifications": ["list", "of", "qualification", "criteria"],
-        "keyFacts": ["list", "of", "important", "facts"],
-        "timeline": "Urgency statement",
-        "legalStats": [
-          { "number": "stat", "label": "description" }
-        ],
-        "settlementInfo": {
-          "averageAmount": "Estimated average settlement amount",
-          "range": "Settlement range",
-          "timeline": "Expected timeline",
-          "process": ["Step 1", "Step 2", "etc"]
-        }
-      },
-      "evidence": {
-        "studyTitle": "Title of primary study",
-        "studyDate": "Study date",
-        "studyUrl": "Study URL",
-        "keyFindings": ["list", "of", "findings"]
-      },
-      "disclaimer": {
-        "legalDisclaimer": "Legal disclaimer text",
-        "medicalDisclaimer": "Medical advice disclaimer",
-        "studyCitation": "Full study citation"
-      },
-      "sections": {
-        "hero": true,
-        "benefits": true,
-        "evidence": true,
-        "settlement": true,
-        "callBanner": true
-      }
+    2. Compliance:
+       - Avoid definitive success guarantees
+       - Include proper medical and legal disclaimers
+       - Maintain factual accuracy
+       - Cite sources for medical claims
+
+    3. User Experience:
+       - Clear information hierarchy
+       - Accessible language
+       - Mobile-friendly content structure
+       - Prominent contact information
+
+    Respond with a JSON object matching this TypeScript interface:
+    interface TemplateData {
+      campaign: {
+        title: string;
+        phone: string;
+        description: string;
+        mainHeadline: string;
+        subHeadline: string;
+        symptoms: string[];
+        qualifications: string[];
+        keyFacts: string[];
+        timeline: string;
+        legalStats: Array<{ number: string; label: string }>;
+        settlementInfo: {
+          averageAmount: string;
+          range: string;
+          timeline: string;
+          process: string[];
+        };
+      };
+      evidence: {
+        studyTitle: string;
+        studyDate: string;
+        studyUrl: string;
+        keyFindings: string[];
+      };
+      disclaimer: {
+        legalDisclaimer: string;
+        medicalDisclaimer: string;
+        studyCitation: string;
+      };
+      sections: {
+        hero: boolean;
+        benefits: boolean;
+        evidence: boolean;
+        settlement: boolean;
+        callBanner: boolean;
+      };
     }
   `;
 
@@ -158,7 +218,7 @@ export async function generateCampaignContent(
       {
         role: "system",
         content:
-          "You are a legal marketing expert specializing in mass tort campaigns. Generate content that is factual, compelling, and compliant with legal marketing regulations.",
+          "You are a legal marketing expert specializing in mass tort campaigns. Generate content that is factual, compliant with legal marketing regulations, and focused on informing potential clients about their legal options.",
       },
       {
         role: "user",
@@ -176,13 +236,18 @@ export async function generateCampaignContent(
 }
 
 export async function generateContentFromUrl(url: string): Promise<TemplateData> {
-  // First, extract and structure the competitor content
-  const extractedData = await extractContentFromCompetitor(url);
+  try {
+    // First, extract and structure the competitor content
+    const extractedData = await extractContentFromCompetitor(url);
 
-  // Then generate our campaign content using the structured data
-  return generateCampaignContent({
-    drugName: extractedData.drugInfo.name,
-    condition: extractedData.drugInfo.condition,
-    competitorContent: extractedData.structuredContent,
-  });
+    // Generate our campaign content using the structured data
+    return generateCampaignContent({
+      drugName: extractedData.drugInfo.name,
+      condition: extractedData.drugInfo.condition,
+      competitorContent: extractedData.structuredContent,
+    });
+  } catch (error) {
+    console.error("Content generation error:", error);
+    throw new Error("Failed to generate content from URL: " + error.message);
+  }
 }
