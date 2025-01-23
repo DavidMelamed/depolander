@@ -99,14 +99,16 @@ interface UpdateSuggestion {
 export default function Dashboard() {
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState("templates");
   const { toast } = useToast();
+
+  const { data: contentVersions, isLoading: isLoadingContent } = useQuery<ContentVersion[]>({
+    queryKey: ["/api/content-versions"],
+    staleTime: 0, // Always refetch to ensure we have latest data
+  });
 
   const { data: templates } = useQuery<Template[]>({
     queryKey: ["/api/templates"],
-  });
-
-  const { data: contentVersions } = useQuery<ContentVersion[]>({
-    queryKey: ["/api/content-versions"],
   });
 
   const { data: deployments } = useQuery<Deployment[]>({
@@ -232,9 +234,10 @@ export default function Dashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/content-versions"] });
+      setActiveTab("content"); // Switch to content tab after generation
       toast({
         title: "Success",
-        description: "New content generated successfully. Check the Content tab to view it.",
+        description: "New content generated successfully. Switching to Content tab to view it.",
       });
     },
   });
@@ -312,7 +315,7 @@ export default function Dashboard() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-8">Content Management Dashboard</h1>
 
-      <Tabs defaultValue="templates" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
@@ -541,168 +544,176 @@ export default function Dashboard() {
                 <CardTitle>Content Versions</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {contentVersions?.map((version) => (
-                    <Card key={version.id} className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold">
-                            {version.drugName} - {version.condition}
-                          </h3>
-                          <p className="text-sm text-gray-500">
-                            Version {version.version} • {version.language.toUpperCase()} •
-                            Created {new Date(version.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="space-x-2">
-                          <Button
-                            onClick={() => setSelectedVersion(version.id)}
-                            variant="outline"
-                          >
-                            Manage Translations
-                          </Button>
-                        </div>
-                      </div>
-
-                      {selectedVersion === version.id && (
-                        <div className="mt-4 space-y-4">
-                          <h4 className="font-semibold">Translations</h4>
-
-                          <Card className="p-4">
-                            <h5 className="font-medium mb-2">Add Translation</h5>
-                            <div className="flex gap-2">
-                              <Select
-                                onValueChange={(value) =>
-                                  createTranslation.mutate({
-                                    id: version.id,
-                                    language: value,
-                                  })
-                                }
-                              >
-                                <SelectTrigger className="w-[200px]">
-                                  <SelectValue placeholder="Select language" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {languages?.map((lang) => (
-                                    <SelectItem
-                                      key={lang.code}
-                                      value={lang.code}
-                                      disabled={translations?.some(
-                                        (t) => t.language === lang.code
-                                      )}
-                                    >
-                                      {lang.name} ({lang.nativeName})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </Card>
-
-                          {translations?.map((translation) => (
-                            <Card key={translation.id} className="p-4">
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <h5 className="font-medium">
-                                    {languages?.find(
-                                      (l) => l.code === translation.language
-                                    )?.name}{" "}
-                                    ({translation.language.toUpperCase()})
-                                  </h5>
-                                  <p className="text-sm text-gray-500">
-                                    Last updated:{" "}
-                                    {new Date(
-                                      translation.lastTranslated
-                                    ).toLocaleDateString()}
-                                  </p>
-                                  <p
-                                    className={`text-sm ${
-                                      translation.status === "completed"
-                                        ? "text-green-500"
-                                        : translation.status === "needs_review"
-                                        ? "text-yellow-500"
-                                        : "text-blue-500"
-                                    }`}
-                                  >
-                                    Status: {translation.status}
-                                  </p>
-                                </div>
-                                <Button
-                                  onClick={() =>
-                                    validateTranslation.mutate(translation.id)
-                                  }
-                                  variant="outline"
-                                  size="sm"
-                                >
-                                  Validate
-                                </Button>
-                              </div>
-                            </Card>
-                          ))}
-                        </div>
-                      )}
-                      {selectedVersion === version.id && suggestions && (
-                        <div className="mt-4 space-y-2">
-                          <h4 className="font-semibold">Update Suggestions</h4>
-                          {suggestions.map((suggestion) => (
-                            <Card key={suggestion.id} className="p-4">
-                              <div>
-                                <p className="font-medium">
-                                  Priority: {suggestion.priority}
-                                </p>
-                                <p>{suggestion.suggestedChanges.summary}</p>
-                                <div className="mt-2">
-                                  {suggestion.suggestedChanges.changes.map(
-                                    (change, i) => (
-                                      <div
-                                        key={i}
-                                        className="mt-2 p-2 bg-gray-50 rounded"
-                                      >
-                                        <p className="font-medium">
-                                          {change.field}
-                                        </p>
-                                        <p className="text-sm text-gray-600">
-                                          Current: {change.currentValue}
-                                        </p>
-                                        <p className="text-sm text-green-600">
-                                          Suggested: {change.suggestedValue}
-                                        </p>
-                                        <p className="text-sm text-gray-500 mt-1">
-                                          {change.reason}
-                                        </p>
-                                      </div>
-                                    )
-                                  )}
-                                </div>
-                              </div>
-                            </Card>
-                          ))}
-
-                          <div className="mt-4">
-                            <Label htmlFor="frequency">Refresh Schedule</Label>
-                            <Select
-                              onValueChange={(value) =>
-                                scheduleRefresh.mutate({
-                                  id: version.id,
-                                  frequency: value,
-                                })
-                              }
+                {isLoadingContent ? (
+                  <div className="text-center py-4">Loading content versions...</div>
+                ) : contentVersions && contentVersions.length > 0 ? (
+                  <div className="space-y-4">
+                    {contentVersions.map((version) => (
+                      <Card key={version.id} className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-semibold">
+                              {version.drugName} - {version.condition}
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                              Version {version.version} • {version.language.toUpperCase()} •
+                              Created {new Date(version.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="space-x-2">
+                            <Button
+                              onClick={() => setSelectedVersion(version.id)}
+                              variant="outline"
                             >
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select frequency" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="daily">Daily</SelectItem>
-                                <SelectItem value="weekly">Weekly</SelectItem>
-                                <SelectItem value="monthly">Monthly</SelectItem>
-                              </SelectContent>
-                            </Select>
+                              {selectedVersion === version.id ? "Hide Details" : "View Details"}
+                            </Button>
                           </div>
                         </div>
-                      )}
-                    </Card>
-                  ))}
-                </div>
+
+                        {selectedVersion === version.id && (
+                          <div className="mt-4 space-y-4">
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                              <h4 className="font-semibold mb-2">Generated Content</h4>
+                              <pre className="whitespace-pre-wrap text-sm">
+                                {JSON.stringify(version.content, null, 2)}
+                              </pre>
+                            </div>
+                            <h4 className="font-semibold">Translations</h4>
+
+                            <Card className="p-4">
+                              <h5 className="font-medium mb-2">Add Translation</h5>
+                              <div className="flex gap-2">
+                                <Select
+                                  onValueChange={(value) =>
+                                    createTranslation.mutate({
+                                      id: version.id,
+                                      language: value,
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger className="w-[200px]">
+                                    <SelectValue placeholder="Select language" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {languages?.map((lang) => (
+                                      <SelectItem
+                                        key={lang.code}
+                                        value={lang.code}
+                                        disabled={translations?.some(
+                                          (t) => t.language === lang.code
+                                        )}
+                                      >
+                                        {lang.name} ({lang.nativeName})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </Card>
+
+                            {translations?.map((translation) => (
+                              <Card key={translation.id} className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <h5 className="font-medium">
+                                      {languages?.find(
+                                        (l) => l.code === translation.language
+                                      )?.name}{" "}
+                                      ({translation.language.toUpperCase()})
+                                    </h5>
+                                    <p className="text-sm text-gray-500">
+                                      Last updated:{" "}
+                                      {new Date(
+                                        translation.lastTranslated
+                                      ).toLocaleDateString()}
+                                    </p>
+                                    <p
+                                      className={`text-sm ${
+                                        translation.status === "completed"
+                                          ? "text-green-500"
+                                          : translation.status === "needs_review"
+                                          ? "text-yellow-500"
+                                          : "text-blue-500"
+                                      }`}
+                                    >
+                                      Status: {translation.status}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    onClick={() => validateTranslation.mutate(translation.id)}
+                                    variant="outline"
+                                    size="sm"
+                                  >
+                                    Validate
+                                  </Button>
+                                </div>
+                              </Card>
+                            ))}
+                            {suggestions && (
+                              <div className="mt-4 space-y-2">
+                                <h4 className="font-semibold">Update Suggestions</h4>
+                                {suggestions.map((suggestion) => (
+                                  <Card key={suggestion.id} className="p-4">
+                                    <div>
+                                      <p className="font-medium">
+                                        Priority: {suggestion.priority}
+                                      </p>
+                                      <p>{suggestion.suggestedChanges.summary}</p>
+                                      <div className="mt-2">
+                                        {suggestion.suggestedChanges.changes.map((change, i) => (
+                                          <div
+                                            key={i}
+                                            className="mt-2 p-2 bg-gray-50 rounded"
+                                          >
+                                            <p className="font-medium">{change.field}</p>
+                                            <p className="text-sm text-gray-600">
+                                              Current: {change.currentValue}
+                                            </p>
+                                            <p className="text-sm text-green-600">
+                                              Suggested: {change.suggestedValue}
+                                            </p>
+                                            <p className="text-sm text-gray-500 mt-1">
+                                              {change.reason}
+                                            </p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </Card>
+                                ))}
+
+                                <div className="mt-4">
+                                  <Label htmlFor="frequency">Refresh Schedule</Label>
+                                  <Select
+                                    onValueChange={(value) =>
+                                      scheduleRefresh.mutate({
+                                        id: version.id,
+                                        frequency: value,
+                                      })
+                                    }
+                                  >
+                                    <SelectTrigger className="w-full">
+                                      <SelectValue placeholder="Select frequency" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="daily">Daily</SelectItem>
+                                      <SelectItem value="weekly">Weekly</SelectItem>
+                                      <SelectItem value="monthly">Monthly</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    No content versions found. Generate some content using the AI tab.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -885,25 +896,23 @@ export default function Dashboard() {
                           </p>
                           <p>{suggestion.suggestedChanges.summary}</p>
                           <div className="mt-2">
-                            {suggestion.suggestedChanges.changes.map(
-                              (change, i) => (
-                                <div
-                                  key={i}
-                                  className="mt-2 p-2 bg-gray-50 rounded"
-                                >
-                                  <p className="font-medium">{change.field}</p>
-                                  <p className="text-sm text-gray-600">
-                                    Current: {change.currentValue}
-                                  </p>
-                                  <p className="text-sm text-green-600">
-                                    Suggested: {change.suggestedValue}
-                                  </p>
-                                  <p className="text-sm text-gray-500 mt-1">
-                                    {change.reason}
-                                  </p>
-                                </div>
-                              )
-                            )}
+                            {suggestion.suggestedChanges.changes.map((change, i) => (
+                              <div
+                                key={i}
+                                className="mt-2 p-2 bg-gray-50 rounded"
+                              >
+                                <p className="font-medium">{change.field}</p>
+                                <p className="text-sm text-gray-600">
+                                  Current: {change.currentValue}
+                                </p>
+                                <p className="text-sm text-green-600">
+                                  Suggested: {change.suggestedValue}
+                                </p>
+                                <p className="text-sm text-gray-500 mt-1">
+                                  {change.reason}
+                                </p>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       </Card>
