@@ -13,7 +13,7 @@ export default function CallBanner() {
           </div>
           <Button
             size="lg"
-            className="bg-destructive hover:bg-destructive/90 text-white w-full sm:w-auto"
+            className="bg-destructive hover:bg-destructive/90 text-white w-full sm:w-auto animate-shake"
             onClick={() => window.location.href = `tel:${CAMPAIGN_INFO.phone}`}
           >
             <Phone className="mr-2 h-5 w-5" />

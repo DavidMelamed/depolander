@@ -8,7 +8,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { CAMPAIGN_INFO } from "@/lib/constants";
-import { Phone, ArrowRight, Clock, Scale, AlertCircle } from "lucide-react";
+import { Phone, Clock, Scale, AlertCircle } from "lucide-react";
 
 export default function EligibilitySurvey() {
   const [step, setStep] = useState<1 | 2>(1);
@@ -70,7 +70,7 @@ export default function EligibilitySurvey() {
 
             <div className="space-y-3">
               <Button 
-                className="w-full text-lg py-6"
+                className="w-full text-lg py-6 animate-shake"
                 size="lg"
                 onClick={() => window.location.href = `tel:${CAMPAIGN_INFO.phone}`}
               >
@@ -102,10 +102,8 @@ export default function EligibilitySurvey() {
               </p>
               <Button 
                 className="w-full"
-                onClick={() => window.location.href = `tel:${CAMPAIGN_INFO.phone}`}
               >
-                <Phone className="mr-2 h-5 w-5" />
-                Call {CAMPAIGN_INFO.phone}
+                Schedule Consultation
               </Button>
               <p className="text-xs text-center text-muted-foreground">
                 No fees unless we win your case
