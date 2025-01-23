@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { CAMPAIGN_INFO } from "@/lib/constants";
-import { DollarSign, Clock, ListChecks, AlertTriangle, PhoneCall } from "lucide-react";
+import { DollarSign, Scale, Shield, Trophy, PhoneCall, FileCheck, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function SettlementSection() {
@@ -11,25 +11,20 @@ export default function SettlementSection() {
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-2xl font-bold mb-8 text-center">
-            Settlement Information & Process
+            Compensation & Legal Support
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <DollarSign className="h-6 w-6 text-primary" />
-                  <h3 className="text-xl font-semibold">Potential Compensation</h3>
+                  <h3 className="text-xl font-semibold">Financial Recovery</h3>
                 </div>
-                <div className="space-y-2">
-                  <p><strong>Average Range:</strong> {settlementInfo.averageAmount}</p>
-                  <p><strong>Settlement Range:</strong> {settlementInfo.range}</p>
-                  <div className="mt-4 p-3 bg-destructive/10 rounded-lg">
-                    <div className="flex items-center gap-2 text-destructive">
-                      <AlertTriangle className="h-5 w-5" />
-                      <p className="font-medium">Time-Sensitive: Legal Deadlines Apply</p>
-                    </div>
-                  </div>
+                <p className="mb-4">Potential compensation range: {settlementInfo.range}</p>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Trophy className="h-4 w-4" />
+                  <span>Proven Track Record</span>
                 </div>
               </CardContent>
             </Card>
@@ -37,54 +32,66 @@ export default function SettlementSection() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <Clock className="h-6 w-6 text-primary" />
-                  <h3 className="text-xl font-semibold">Timeline</h3>
+                  <Scale className="h-6 w-6 text-primary" />
+                  <h3 className="text-xl font-semibold">Expert Legal Team</h3>
                 </div>
-                <p className="mb-4">{settlementInfo.timeline}</p>
-                <Button 
-                  className="w-full"
-                  onClick={() => window.location.href = `tel:${CAMPAIGN_INFO.phone}`}
-                >
-                  <PhoneCall className="mr-2 h-5 w-5" />
-                  Start Your Claim Now
-                </Button>
+                <p className="mb-4">Experienced attorneys specialized in mass tort litigation</p>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <BadgeCheck className="h-4 w-4" />
+                  <span>Top-Rated Lawyers</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <Shield className="h-6 w-6 text-primary" />
+                  <h3 className="text-xl font-semibold">No Upfront Costs</h3>
+                </div>
+                <p className="mb-4">Pay nothing unless we win your case</p>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <FileCheck className="h-4 w-4" />
+                  <span>Free Consultation</span>
+                </div>
               </CardContent>
             </Card>
           </div>
 
           <Card>
             <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <ListChecks className="h-6 w-6 text-primary" />
-                <h3 className="text-xl font-semibold">Legal Process</h3>
-              </div>
-              <div className="space-y-4 mb-6">
-                {settlementInfo.process.map((step, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <div className="rounded-full bg-primary/10 text-primary px-2 py-1 text-sm font-medium">
-                      {index + 1}
-                    </div>
-                    <p>{step}</p>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">Start Your Claim Today</h3>
+                    <p className="text-muted-foreground">
+                      Our experienced legal team is available 24/7 to evaluate your case and discuss your potential compensation.
+                    </p>
                   </div>
-                ))}
-              </div>
-
-              <div className="p-4 bg-muted rounded-lg">
-                <div className="flex items-center gap-3 mb-2">
-                  <Clock className="h-5 w-5 text-primary" />
-                  <p className="font-medium">Fast & Free Case Evaluation</p>
+                  <Button 
+                    className="bg-primary hover:bg-primary/90"
+                    size="lg"
+                    onClick={() => window.location.href = `tel:${CAMPAIGN_INFO.phone}`}
+                  >
+                    <PhoneCall className="mr-2 h-5 w-5" />
+                    Call Now
+                  </Button>
                 </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Our experienced legal team is available 24/7 to discuss your case and potential compensation.
-                </p>
-                <Button 
-                  className="w-full bg-primary hover:bg-primary/90"
-                  size="lg"
-                  onClick={() => window.location.href = `tel:${CAMPAIGN_INFO.phone}`}
-                >
-                  <PhoneCall className="mr-2 h-5 w-5" />
-                  Call Now: {CAMPAIGN_INFO.phone}
-                </Button>
+
+                <div className="grid sm:grid-cols-3 gap-4 pt-4 border-t">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-primary" />
+                    <span className="text-sm">Confidential Case Review</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Scale className="h-5 w-5 text-primary" />
+                    <span className="text-sm">No Win, No Fee Guarantee</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-primary" />
+                    <span className="text-sm">Proven Results</span>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

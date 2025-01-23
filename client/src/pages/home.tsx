@@ -48,10 +48,15 @@ export default function Home() {
                 Consult with qualified healthcare providers regarding medical decisions. 
                 Past results do not guarantee future outcomes.
               </p>
-              <div className="pt-4 flex items-center justify-center">
+              <div className="pt-4 flex items-center justify-center gap-4">
                 <Link href="/privacy">
                   <a className="text-primary hover:underline">Privacy Policy</a>
                 </Link>
+                <span>•</span>
+                <div className="flex items-center gap-1">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  <span>Protected by SSL Encryption</span>
+                </div>
               </div>
             </div>
           </div>
