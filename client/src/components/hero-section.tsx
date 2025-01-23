@@ -5,7 +5,7 @@ import EligibilitySurvey from "./eligibility-survey";
 
 export default function HeroSection() {
   return (
-    <section className="relative bg-primary text-primary-foreground py-16 md:py-24">
+    <section className="relative bg-primary text-primary-foreground py-20 md:py-28">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-destructive/90 text-white px-4 py-2 rounded-full mb-6">
