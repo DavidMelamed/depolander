@@ -1,41 +1,48 @@
 import { Request, Response, NextFunction } from 'express';
 
-// Security middleware to add HTTPS-related headers and enforce HTTPS
+// Security middleware to add HTTPS-related headers
 export const securityMiddleware = (req: Request, res: Response, next: NextFunction) => {
   // Set security headers
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN'); // Changed from DENY to allow Replit's iframe
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
-  // Only force HTTPS redirect in production
-  // Replit handles SSL/TLS termination at their edge
-  if (process.env.NODE_ENV === 'production' && !req.secure && req.get('x-forwarded-proto') !== 'https') {
-    return res.redirect(301, `https://${req.get('host')}${req.url}`);
+
+  // Let Replit handle HTTPS
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
 
   next();
 };
 
-// CSP middleware for enhanced security
+// CSP middleware with development-friendly settings
 export const cspMiddleware = (_req: Request, res: Response, next: NextFunction) => {
+  // More permissive CSP for development environment
+  const isDev = process.env.NODE_ENV === 'development';
+
   res.setHeader(
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Required for React development
+      // Allow inline scripts and eval for development
+      `script-src 'self' ${isDev ? "'unsafe-inline' 'unsafe-eval'" : ''}`,
+      // Allow inline styles for shadcn/ui
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https:", // Allow images from HTTPS sources
+      // Allow images from any HTTPS source and data URIs
+      "img-src 'self' data: https: blob:",
+      // Allow fonts from self
       "font-src 'self'",
-      "connect-src 'self'",
+      // Allow connection to our API and websockets for development
+      `connect-src 'self' ${isDev ? 'ws: wss:' : ''}`,
       "media-src 'self'",
       "object-src 'none'",
-      "frame-ancestors 'none'",
+      // Allow framing from same origin for Replit
+      "frame-ancestors 'self'",
       "base-uri 'self'",
       "form-action 'self'",
     ].join('; ')
   );
-  
+
   next();
 };
