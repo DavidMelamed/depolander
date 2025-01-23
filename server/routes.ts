@@ -10,6 +10,19 @@ import fs from "fs/promises";
 import path from "path";
 
 export function registerRoutes(app: Express): Server {
+  // Add GET endpoint for content versions
+  app.get("/api/content-versions", async (_req, res) => {
+    try {
+      const allContentVersions = await db.query.contentVersions.findMany({
+        orderBy: (versions) => desc(versions.createdAt),
+      });
+      res.json(allContentVersions);
+    } catch (error) {
+      console.error("Error fetching content versions:", error);
+      res.status(500).json({ error: "Failed to fetch content versions" });
+    }
+  });
+
   // CMS Routes
   app.get("/api/templates", async (_req, res) => {
     try {
