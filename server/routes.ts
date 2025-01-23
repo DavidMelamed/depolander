@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { leads, insertLeadSchema, contentVersions, templates, sections, adminUsers, insertAdminUserSchema } from "@db/schema";
+import { leads, insertLeadSchema, contentVersions, templates, sections, adminUsers, insertAdminUserSchema, colorSchemes, landingPages, insertColorSchemeSchema, insertLandingPageSchema } from "@db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { isAdmin, isAuthenticated, isNotAuthenticated } from "./middleware/auth";
 import passport from "passport";
@@ -738,6 +738,131 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error serving asset:", error);
       res.status(500).json({ error: "Failed to serve asset" });
+    }
+  });
+
+  // Color Scheme Management
+  app.get("/api/color-schemes", isAdmin, async (_req, res) => {
+    try {
+      const schemes = await db.query.colorSchemes.findMany({
+        orderBy: (schemes) => schemes.createdAt,
+      });
+      res.json(schemes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch color schemes" });
+    }
+  });
+
+  app.post("/api/color-schemes", isAdmin, async (req, res) => {
+    try {
+      const validatedData = insertColorSchemeSchema.parse(req.body);
+      const result = await db.insert(colorSchemes).values(validatedData).returning();
+      res.json(result[0]);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid color scheme data" });
+    }
+  });
+
+  // Landing Page Management
+  app.get("/api/landing-pages", isAdmin, async (_req, res) => {
+    try {
+      const pages = await db.query.landingPages.findMany({
+        with: {
+          colorScheme: true,
+        },
+        orderBy: (pages) => desc(pages.createdAt),
+      });
+      res.json(pages);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch landing pages" });
+    }
+  });
+
+  app.post("/api/landing-pages", isAdmin, async (req, res) => {
+    try {
+      const validatedData = insertLandingPageSchema.parse(req.body);
+      const result = await db.insert(landingPages).values(validatedData).returning();
+      res.json(result[0]);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid landing page data" });
+    }
+  });
+
+  app.get("/api/landing-pages/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const page = await db.query.landingPages.findFirst({
+        where: eq(landingPages.id, parseInt(id)),
+        with: {
+          colorScheme: true,
+        },
+      });
+
+      if (!page) {
+        return res.status(404).json({ error: "Landing page not found" });
+      }
+
+      res.json(page);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch landing page" });
+    }
+  });
+
+  app.get("/api/landing-pages/by-slug/:slug", async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const page = await db.query.landingPages.findFirst({
+        where: eq(landingPages.slug, slug),
+        with: {
+          colorScheme: true,
+        },
+      });
+
+      if (!page) {
+        return res.status(404).json({ error: "Landing page not found" });
+      }
+
+      res.json(page);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch landing page" });
+    }
+  });
+
+  app.post("/api/landing-pages/:id/duplicate", isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { newSlug, newTitle } = req.body;
+
+      if (!newSlug || !newTitle) {
+        return res.status(400).json({ error: "New slug and title are required" });
+      }
+
+      // Get the original page
+      const originalPage = await db.query.landingPages.findFirst({
+        where: eq(landingPages.id, parseInt(id)),
+      });
+
+      if (!originalPage) {
+        return res.status(404).json({ error: "Original landing page not found" });
+      }
+
+      // Create new page with same content but different slug
+      const newPage = {
+        ...originalPage,
+        id: undefined,
+        slug: newSlug,
+        title: newTitle,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const result = await db.insert(landingPages)
+        .values(newPage)
+        .returning();
+
+      res.json(result[0]);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to duplicate landing page" });
     }
   });
 

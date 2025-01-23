@@ -13,6 +13,31 @@ export const adminUsers = pgTable("admin_users", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Add color schemes table
+export const colorSchemes = pgTable("color_schemes", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  primary: text("primary").notNull(),
+  secondary: text("secondary").notNull(),
+  background: text("background").notNull(),
+  text: text("text").notNull(),
+  accent: text("accent").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Add landing pages table
+export const landingPages = pgTable("landing_pages", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").unique().notNull(),
+  title: text("title").notNull(),
+  colorSchemeId: integer("color_scheme_id").references(() => colorSchemes.id),
+  content: jsonb("content").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Base tables without foreign keys
 export const leads = pgTable("leads", {
   id: serial("id").primaryKey(),
@@ -21,6 +46,7 @@ export const leads = pgTable("leads", {
   phone: text("phone").notNull(),
   email: text("email").notNull(),
   details: text("details"),
+  landingPageId: integer("landing_page_id").references(() => landingPages.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -87,6 +113,12 @@ export const templatesRelations = relations(templates, ({ many }) => ({
   contentVersions: many(contentVersions),
 }));
 
+export const landingPagesRelations = relations(landingPages, ({ one }) => ({
+  colorScheme: one(colorSchemes, {
+    fields: [landingPages.colorSchemeId],
+    references: [colorSchemes.id],
+  }),
+}));
 
 // Types
 export type Lead = InferModel<typeof leads>;
@@ -94,6 +126,8 @@ export type Template = InferModel<typeof templates>;
 export type ContentVersion = InferModel<typeof contentVersions>;
 export type Section = InferModel<typeof sections>;
 export type AdminUser = InferModel<typeof adminUsers>;
+export type ColorScheme = InferModel<typeof colorSchemes>;
+export type LandingPage = InferModel<typeof landingPages>;
 
 // Schemas
 export const insertLeadSchema = createInsertSchema(leads);
@@ -106,3 +140,7 @@ export const insertSectionSchema = createInsertSchema(sections);
 export const selectSectionSchema = createSelectSchema(sections);
 export const insertAdminUserSchema = createInsertSchema(adminUsers);
 export const selectAdminUserSchema = createSelectSchema(adminUsers);
+export const insertColorSchemeSchema = createInsertSchema(colorSchemes);
+export const selectColorSchemeSchema = createSelectSchema(colorSchemes);
+export const insertLandingPageSchema = createInsertSchema(landingPages);
+export const selectLandingPageSchema = createSelectSchema(landingPages);
