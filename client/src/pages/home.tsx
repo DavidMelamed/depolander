@@ -9,25 +9,28 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <header className="fixed w-full top-0 bg-primary text-primary-foreground z-50 shadow-sm">
-        <div className="container mx-auto px-4 flex justify-between items-center h-14">
-          <h1 className="text-lg font-semibold">Legal Alert: Depo-Provera Claims</h1>
-          <a href={`tel:${CAMPAIGN_INFO.phone}`} className="text-lg font-bold hover:underline">
+        <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center min-h-[3.5rem]">
+          <h1 className="text-base sm:text-lg font-semibold py-2 sm:py-0">Legal Alert: Depo-Provera Claims</h1>
+          <a 
+            href={`tel:${CAMPAIGN_INFO.phone}`} 
+            className="text-base sm:text-lg font-bold hover:underline pb-2 sm:pb-0"
+          >
             {CAMPAIGN_INFO.phone}
           </a>
         </div>
       </header>
 
-      <main className="pt-14">
+      <main className="pt-[4.5rem] sm:pt-14">
         <HeroSection />
         <BenefitsSection />
         <EvidenceSection />
         <SettlementSection />
       </main>
 
-      <footer className="bg-muted py-8">
+      <footer className="bg-muted py-6 sm:py-8">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <div className="text-sm text-muted-foreground space-y-4">
+            <div className="text-xs sm:text-sm text-muted-foreground space-y-4">
               <p className="font-medium">Important Legal Information:</p>
               <p>{DISCLAIMER}</p>
               <p>
