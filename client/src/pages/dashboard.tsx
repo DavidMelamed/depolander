@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
+import SectionEditor from "@/components/section-editor";
 
 interface ContentVersion {
   id: number;
@@ -51,6 +52,7 @@ interface Template {
   defaultStyles: any;
   createdAt: string;
   updatedAt: string;
+  sections?: any[]; // Added sections property to Template interface
 }
 
 interface Deployment {
@@ -368,9 +370,63 @@ export default function Dashboard() {
                         onClick={() => setSelectedTemplate(template.id)}
                         variant="outline"
                       >
-                        View Sections
+                        {selectedTemplate === template.id ? "Hide Sections" : "Edit Sections"}
                       </Button>
                     </div>
+
+                    {/* Section Editor */}
+                    {selectedTemplate === template.id && template.structure && (
+                      <div className="mt-4">
+                        <SectionEditor
+                          sections={template.structure.sections}
+                          onUpdate={async (updatedSections) => {
+                            try {
+                              // Update section order
+                              await fetch(`/api/templates/${template.id}/sections/reorder`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  sectionIds: updatedSections.map((s) => s.id),
+                                }),
+                              });
+
+                              // Update individual sections
+                              await Promise.all(
+                                updatedSections.map((section) =>
+                                  fetch(
+                                    `/api/templates/${template.id}/sections/${section.id}`,
+                                    {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({
+                                        content: section.content,
+                                        styles: section.styles,
+                                      }),
+                                    }
+                                  )
+                                )
+                              );
+
+                              queryClient.invalidateQueries({
+                                queryKey: ["/api/templates"],
+                              });
+
+                              toast({
+                                title: "Success",
+                                description: "Template sections updated",
+                              });
+                            } catch (error) {
+                              console.error("Error updating sections:", error);
+                              toast({
+                                title: "Error",
+                                description: "Failed to update template sections",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
                   </Card>
                 ))}
               </div>

@@ -15,7 +15,9 @@ export function registerRoutes(app: Express): Server {
     try {
       const allTemplates = await db.query.templates.findMany({
         with: {
-          sections: true,
+          sections: {
+            orderBy: (sections) => sections.order,
+          },
           contentVersions: {
             where: eq(contentVersions.isActive, true),
           },
@@ -44,7 +46,9 @@ export function registerRoutes(app: Express): Server {
       const template = await db.query.templates.findFirst({
         where: eq(templates.id, parseInt(id)),
         with: {
-          sections: true,
+          sections: {
+            orderBy: (sections) => sections.order,
+          },
           contentVersions: {
             where: eq(contentVersions.isActive, true),
           },
@@ -74,6 +78,66 @@ export function registerRoutes(app: Express): Server {
       res.json(result[0]);
     } catch (error) {
       res.status(400).json({ error: "Invalid section data" });
+    }
+  });
+
+  // New endpoint to update sections
+  app.put("/api/templates/:templateId/sections/:sectionId", async (req, res) => {
+    try {
+      const { templateId, sectionId } = req.params;
+      const updateData = req.body;
+
+      const result = await db
+        .update(sections)
+        .set(updateData)
+        .where(
+          and(
+            eq(sections.id, parseInt(sectionId)),
+            eq(sections.templateId, parseInt(templateId))
+          )
+        )
+        .returning();
+
+      if (!result.length) {
+        return res.status(404).json({ error: "Section not found" });
+      }
+
+      res.json(result[0]);
+    } catch (error) {
+      console.error("Error updating section:", error);
+      res.status(400).json({ error: "Invalid section data" });
+    }
+  });
+
+  // New endpoint to update section order
+  app.put("/api/templates/:templateId/sections/reorder", async (req, res) => {
+    try {
+      const { templateId } = req.params;
+      const { sectionIds } = req.body as { sectionIds: number[] };
+
+      const updates = sectionIds.map((id, index) =>
+        db
+          .update(sections)
+          .set({ order: index })
+          .where(
+            and(
+              eq(sections.id, id),
+              eq(sections.templateId, parseInt(templateId))
+            )
+          )
+      );
+
+      await Promise.all(updates);
+
+      const updatedSections = await db.query.sections.findMany({
+        where: eq(sections.templateId, parseInt(templateId)),
+        orderBy: (sections) => sections.order,
+      });
+
+      res.json(updatedSections);
+    } catch (error) {
+      console.error("Error reordering sections:", error);
+      res.status(400).json({ error: "Failed to reorder sections" });
     }
   });
 
