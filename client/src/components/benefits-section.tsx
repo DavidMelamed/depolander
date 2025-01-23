@@ -46,7 +46,7 @@ export default function BenefitsSection() {
               </CardContent>
             </Card>
 
-            <div className="bg-muted p-6 rounded-lg">
+            <div className="bg-muted p-6 rounded-lg mt-8">
               <h3 className="text-xl font-semibold mb-4">Key Facts About the Lawsuit</h3>
               <div className="space-y-3">
                 {CAMPAIGN_INFO.keyFacts.map((fact, index) => (
@@ -62,8 +62,26 @@ export default function BenefitsSection() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold mb-6">Common Symptoms & Complications</h2>
+            <h2 className="text-2xl font-bold mb-6">Potential Compensation & Symptoms</h2>
+            <Card className="mb-8">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-semibold mb-4">Settlement Estimates</h3>
+                <p className="text-lg mb-4">Estimated settlement amounts range from $150,000 to $500,000 per case, with some cases potentially exceeding these amounts based on various factors:</p>
+                <ul className="list-disc pl-5 space-y-2 mb-6">
+                  <li>Severity of injuries</li>
+                  <li>Duration of Depo-Provera use</li>
+                  <li>Medical expenses incurred</li>
+                  <li>Lost wages and earning capacity</li>
+                  <li>Pain and suffering</li>
+                </ul>
+                <div className="text-sm text-muted-foreground">
+                  Note: Each case is unique, and settlement amounts may vary based on individual circumstances.
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="grid gap-4">
+              <h3 className="text-xl font-semibold">Common Symptoms & Complications</h3>
               {CAMPAIGN_INFO.symptoms.map((symptom, index) => (
                 <Card key={index}>
                   <CardContent className="p-4">

@@ -8,7 +8,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { CAMPAIGN_INFO } from "@/lib/constants";
-import { Phone, ArrowRight, Clock, Scale } from "lucide-react";
+import { Phone, ArrowRight, Clock, Scale, AlertCircle } from "lucide-react";
 
 export default function EligibilitySurvey() {
   const [step, setStep] = useState<1 | 2>(1);
@@ -29,10 +29,10 @@ export default function EligibilitySurvey() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl text-center">
-            {step === 1 ? "Check Your Eligibility" : isEligible ? "You May Qualify for Compensation" : "Contact Us for More Information"}
+            {step === 1 ? "Check Your Eligibility" : isEligible ? "You May Qualify for Compensation" : "Important Information About Your Case"}
           </DialogTitle>
         </DialogHeader>
-        
+
         {step === 1 ? (
           <div className="space-y-6 py-4">
             <p className="text-lg font-medium text-center">
@@ -67,7 +67,7 @@ export default function EligibilitySurvey() {
                 <p>Time-sensitive: Call now to protect your rights</p>
               </div>
             </div>
-            
+
             <div className="space-y-3">
               <Button 
                 className="w-full text-lg py-6"
@@ -84,16 +84,33 @@ export default function EligibilitySurvey() {
           </div>
         ) : (
           <div className="space-y-6 py-4">
-            <p className="text-center">
-              Contact us to learn more about your legal rights regarding Depo-Provera usage.
-            </p>
-            <Button 
-              className="w-full"
-              onClick={() => window.location.href = `tel:${CAMPAIGN_INFO.phone}`}
-            >
-              <Phone className="mr-2 h-5 w-5" />
-              Call {CAMPAIGN_INFO.phone}
-            </Button>
+            <div className="bg-muted/50 p-4 rounded-lg space-y-4">
+              <div className="flex items-center gap-2 text-destructive">
+                <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                <p className="text-sm">
+                  While you may not meet our specific criteria, this doesn't necessarily mean you don't have a valid claim.
+                </p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Every case is unique, and there may be other factors that could affect your eligibility for compensation.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-center text-sm">
+                Speak with our legal experts for a thorough evaluation of your case. Our consultation is free and confidential.
+              </p>
+              <Button 
+                className="w-full"
+                onClick={() => window.location.href = `tel:${CAMPAIGN_INFO.phone}`}
+              >
+                <Phone className="mr-2 h-5 w-5" />
+                Call {CAMPAIGN_INFO.phone}
+              </Button>
+              <p className="text-xs text-center text-muted-foreground">
+                No fees unless we win your case
+              </p>
+            </div>
           </div>
         )}
       </DialogContent>
