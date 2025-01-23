@@ -14,6 +14,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 
 interface ContentVersion {
   id: number;
@@ -42,13 +43,45 @@ interface Language {
   nativeName: string;
 }
 
+interface Template {
+  id: number;
+  name: string;
+  description: string;
+  structure: any;
+  defaultStyles: any;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Deployment {
+  id: number;
+  contentVersionId: number;
+  domain: string;
+  subdomain: string | null;
+  status: string;
+  analyticsId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function Dashboard() {
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
   const { toast } = useToast();
+
+  // Fetch templates
+  const { data: templates } = useQuery<Template[]>({
+    queryKey: ["/api/templates"],
+  });
 
   // Fetch content versions
   const { data: contentVersions } = useQuery<ContentVersion[]>({
     queryKey: ["/api/content-versions"],
+  });
+
+  // Fetch deployments
+  const { data: deployments } = useQuery<Deployment[]>({
+    queryKey: ["/api/deployments"],
   });
 
   // Fetch supported languages
@@ -60,6 +93,55 @@ export default function Dashboard() {
   const { data: translations } = useQuery<LanguageVersion[]>({
     queryKey: ["/api/content-versions", selectedVersion, "translations"],
     enabled: !!selectedVersion,
+  });
+
+  // Create new template
+  const createTemplate = useMutation({
+    mutationFn: async (data: {
+      name: string;
+      description: string;
+      structure: any;
+    }) => {
+      const res = await fetch("/api/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
+      toast({
+        title: "Success",
+        description: "Template created",
+      });
+    },
+  });
+
+  // Create deployment
+  const createDeployment = useMutation({
+    mutationFn: async (data: {
+      contentVersionId: number;
+      domain: string;
+      subdomain?: string;
+      configuration: any;
+    }) => {
+      const res = await fetch("/api/deployments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deployments"] });
+      toast({
+        title: "Success",
+        description: "Deployment created",
+      });
+    },
   });
 
   // Create translation
@@ -209,45 +291,95 @@ export default function Dashboard() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-8">Content Management Dashboard</h1>
 
-      <Tabs defaultValue="create" className="space-y-4">
+      <Tabs defaultValue="templates" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="create">Create Content</TabsTrigger>
-          <TabsTrigger value="manage">Manage Content</TabsTrigger>
+          <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsTrigger value="content">Content</TabsTrigger>
+          <TabsTrigger value="deployments">Deployments</TabsTrigger>
         </TabsList>
 
-        {/* Create Content Tab */}
-        <TabsContent value="create">
+        {/* Templates Tab */}
+        <TabsContent value="templates">
           <Card>
             <CardHeader>
-              <CardTitle>Create New Landing Page</CardTitle>
+              <CardTitle>Landing Page Templates</CardTitle>
             </CardHeader>
             <CardContent>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const form = e.target as HTMLFormElement;
-                  const url = new FormData(form).get("url") as string;
-                  createContent.mutate({ url });
-                }}
-                className="space-y-4"
-              >
-                <div className="space-y-2">
-                  <Label htmlFor="url">Competitor URL</Label>
-                  <Input
-                    id="url"
-                    name="url"
-                    placeholder="Enter competitor page URL"
-                    required
-                  />
-                </div>
-                <Button type="submit">Generate Content</Button>
-              </form>
+              <div className="space-y-4">
+                {/* Create Template Form */}
+                <Card className="p-4">
+                  <h3 className="text-lg font-semibold mb-4">Create New Template</h3>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const form = e.target as HTMLFormElement;
+                      const formData = new FormData(form);
+                      createTemplate.mutate({
+                        name: formData.get("name") as string,
+                        description: formData.get("description") as string,
+                        structure: {
+                          sections: [
+                            { type: "hero", editable: true },
+                            { type: "benefits", editable: true },
+                            { type: "evidence", editable: true },
+                            { type: "settlement", editable: true },
+                          ],
+                        },
+                      });
+                      form.reset();
+                    }}
+                    className="space-y-4"
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Template Name</Label>
+                      <Input
+                        id="name"
+                        name="name"
+                        placeholder="Enter template name"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Input
+                        id="description"
+                        name="description"
+                        placeholder="Enter template description"
+                      />
+                    </div>
+                    <Button type="submit">Create Template</Button>
+                  </form>
+                </Card>
+
+                {/* Template List */}
+                {templates?.map((template) => (
+                  <Card key={template.id} className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold">{template.name}</h3>
+                        <p className="text-sm text-gray-500">
+                          {template.description}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Created {new Date(template.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => setSelectedTemplate(template.id)}
+                        variant="outline"
+                      >
+                        View Sections
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Manage Content Tab */}
-        <TabsContent value="manage">
+        {/* Content Tab */}
+        <TabsContent value="content">
           <div className="grid gap-4">
             <Card>
               <CardHeader>
@@ -421,6 +553,102 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Deployments Tab */}
+        <TabsContent value="deployments">
+          <Card>
+            <CardHeader>
+              <CardTitle>Landing Page Deployments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Create Deployment Form */}
+                <Card className="p-4">
+                  <h3 className="text-lg font-semibold mb-4">Deploy Landing Page</h3>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const form = e.target as HTMLFormElement;
+                      const formData = new FormData(form);
+                      createDeployment.mutate({
+                        contentVersionId: parseInt(formData.get("contentVersion") as string),
+                        domain: formData.get("domain") as string,
+                        subdomain: formData.get("subdomain") as string || undefined,
+                        configuration: {
+                          theme: formData.get("theme") || "default",
+                          customization: {},
+                        },
+                      });
+                      form.reset();
+                    }}
+                    className="space-y-4"
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="contentVersion">Content Version</Label>
+                      <Select name="contentVersion" required>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select content version" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {contentVersions?.map((version) => (
+                            <SelectItem key={version.id} value={version.id.toString()}>
+                              {version.drugName} - {version.condition} (v{version.version})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="domain">Domain</Label>
+                      <Input
+                        id="domain"
+                        name="domain"
+                        placeholder="Enter domain (e.g., example.com)"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="subdomain">Subdomain (Optional)</Label>
+                      <Input
+                        id="subdomain"
+                        name="subdomain"
+                        placeholder="Enter subdomain (e.g., landing)"
+                      />
+                    </div>
+                    <Button type="submit">Create Deployment</Button>
+                  </form>
+                </Card>
+
+                {/* Deployment List */}
+                {deployments?.map((deployment) => (
+                  <Card key={deployment.id} className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold">
+                          {deployment.subdomain
+                            ? `${deployment.subdomain}.${deployment.domain}`
+                            : deployment.domain}
+                        </h3>
+                        <p
+                          className={cn("text-sm", {
+                            "text-green-500": deployment.status === "active",
+                            "text-yellow-500": deployment.status === "pending",
+                            "text-red-500": deployment.status === "failed",
+                          })}
+                        >
+                          Status: {deployment.status}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Deployed {new Date(deployment.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

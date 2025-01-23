@@ -1,16 +1,148 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { leads, insertLeadSchema, contentVersions, refreshSchedules, updateSuggestions, languageVersions, insertContentVersionSchema, insertRefreshScheduleSchema } from "@db/schema";
+import { leads, insertLeadSchema, contentVersions, refreshSchedules, updateSuggestions, languageVersions, insertContentVersionSchema, insertRefreshScheduleSchema, templates, sections, deployments, assets, insertTemplateSchema, insertSectionSchema, insertDeploymentSchema } from "@db/schema";
 import { generateCampaignContent, generateContentFromUrl, extractContentFromCompetitor } from "../client/src/lib/services/content-generator";
 import { analyzeContentForUpdates, compareWithCompetitorContent, calculateNextRefreshDate } from "../client/src/lib/services/content-refresh";
 import { translateContent, validateTranslation, getSupportedLanguages } from "../client/src/lib/services/content-translator";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import fs from "fs/promises";
 import path from "path";
 
 export function registerRoutes(app: Express): Server {
-  // Existing routes
+  // CMS Routes
+  app.get("/api/templates", async (_req, res) => {
+    try {
+      const allTemplates = await db.query.templates.findMany({
+        with: {
+          sections: true,
+          contentVersions: {
+            where: eq(contentVersions.isActive, true),
+          },
+        },
+      });
+      res.json(allTemplates);
+    } catch (error) {
+      console.error("Error fetching templates:", error);
+      res.status(500).json({ error: "Failed to fetch templates" });
+    }
+  });
+
+  app.post("/api/templates", async (req, res) => {
+    try {
+      const validatedData = insertTemplateSchema.parse(req.body);
+      const result = await db.insert(templates).values(validatedData).returning();
+      res.json(result[0]);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid template data" });
+    }
+  });
+
+  app.get("/api/templates/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const template = await db.query.templates.findFirst({
+        where: eq(templates.id, parseInt(id)),
+        with: {
+          sections: true,
+          contentVersions: {
+            where: eq(contentVersions.isActive, true),
+          },
+        },
+      });
+
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch template" });
+    }
+  });
+
+  app.post("/api/templates/:id/sections", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const sectionData = {
+        ...req.body,
+        templateId: parseInt(id),
+      };
+
+      const validatedData = insertSectionSchema.parse(sectionData);
+      const result = await db.insert(sections).values(validatedData).returning();
+      res.json(result[0]);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid section data" });
+    }
+  });
+
+  // Deployment Routes
+  app.post("/api/deployments", async (req, res) => {
+    try {
+      const validatedData = insertDeploymentSchema.parse(req.body);
+      const result = await db.insert(deployments).values(validatedData).returning();
+      res.json(result[0]);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid deployment data" });
+    }
+  });
+
+  app.get("/api/deployments", async (_req, res) => {
+    try {
+      const allDeployments = await db.query.deployments.findMany({
+        with: {
+          contentVersion: true,
+        },
+        orderBy: (deployments) => desc(deployments.createdAt),
+      });
+      res.json(allDeployments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch deployments" });
+    }
+  });
+
+  // Content Version Management
+  app.post("/api/content-versions", async (req, res) => {
+    try {
+      const data = insertContentVersionSchema.parse(req.body);
+      const result = await db.insert(contentVersions).values(data).returning();
+      res.json(result[0]);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid content version data" });
+    }
+  });
+
+  app.get("/api/content-versions/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const version = await db.query.contentVersions.findFirst({
+        where: eq(contentVersions.id, parseInt(id)),
+        with: {
+          refreshSchedules: true,
+          updateSuggestions: true,
+          languageVersions: true,
+          template: {
+            with: {
+              sections: true,
+            },
+          },
+          deployments: true,
+          assets: true,
+        },
+      });
+
+      if (!version) {
+        return res.status(404).json({ error: "Content version not found" });
+      }
+
+      res.json(version);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch content version" });
+    }
+  });
+
+  // Leads
   app.post("/api/leads", async (req, res) => {
     try {
       const validatedData = insertLeadSchema.parse(req.body);
@@ -21,6 +153,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Content Generation
   app.post("/api/generate-content", async (req, res) => {
     try {
       const config = req.body;
@@ -46,17 +179,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // New content version and refresh schedule endpoints
-  app.post("/api/content-versions", async (req, res) => {
-    try {
-      const data = insertContentVersionSchema.parse(req.body);
-      const result = await db.insert(contentVersions).values(data).returning();
-      res.json(result[0]);
-    } catch (error) {
-      res.status(400).json({ error: "Invalid content version data" });
-    }
-  });
-
+  // Refresh and Update Management
   app.post("/api/content-versions/:id/schedule", async (req, res) => {
     try {
       const { id } = req.params;
