@@ -1,35 +1,12 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { CAMPAIGN_INFO, MEDICAL_EVIDENCE, REVIEWS } from "@/lib/constants";
-import { FileText, TrendingUp, AlertTriangle, Star, Quote } from "lucide-react";
+import { CAMPAIGN_INFO, MEDICAL_EVIDENCE } from "@/lib/constants";
+import { FileText, TrendingUp, AlertTriangle } from "lucide-react";
 
 export default function EvidenceSection() {
   return (
     <section className="py-16 bg-muted/50">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
-          {/* Reviews Section */}
-          <div className="mb-16">
-            <h2 className="text-2xl font-bold mb-8 text-center">
-              Real Stories from Depo-Provera Users
-            </h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {REVIEWS.map((review, index) => (
-                <Card key={index} className="border-primary/10">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-1 mb-4">
-                      {[...Array(review.rating)].map((_, i) => (
-                        <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                      ))}
-                    </div>
-                    <Quote className="h-6 w-6 text-primary/40 mb-2" />
-                    <p className="text-sm mb-4">{review.text}</p>
-                    <p className="text-sm font-medium text-primary">{review.name}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-
           <h2 className="text-2xl font-bold mb-8 text-center">
             Scientific Evidence & Legal Impact
           </h2>
