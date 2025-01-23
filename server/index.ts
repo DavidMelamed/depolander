@@ -5,17 +5,28 @@ import session from "express-session";
 import passport from "passport";
 import MemoryStore from "memorystore";
 import { cdnMiddleware } from "./middleware/cdn";
+import { securityMiddleware, cspMiddleware } from "./middleware/security";
 
 const SessionStore = MemoryStore(session);
 
 const app = express();
+
+// Apply security middleware first
+app.use(securityMiddleware);
+app.use(cspMiddleware);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Session configuration
+// Session configuration with secure settings
 app.use(
   session({
-    cookie: { maxAge: 86400000 }, // 24 hours
+    cookie: { 
+      maxAge: 86400000, // 24 hours
+      secure: process.env.NODE_ENV === 'production', // Only use secure cookies in production
+      httpOnly: true, // Protect against XSS
+      sameSite: 'strict' // Protect against CSRF
+    },
     store: new SessionStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     }),
