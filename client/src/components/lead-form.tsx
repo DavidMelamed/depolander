@@ -11,12 +11,18 @@ import { useToast } from "@/hooks/use-toast";
 const formSchema = z.object({
   firstName: z.string().min(2, "First name is required"),
   lastName: z.string().min(2, "Last name is required"),
-  phone: z.string().min(10, "Valid phone number required"),
+  phone: z.string().min(10, "Valid phone number required").regex(/^[0-9()-\s]+$/, "Invalid phone number format"),
   email: z.string().email("Valid email required"),
   details: z.string().optional()
 });
 
 type FormData = z.infer<typeof formSchema>;
+
+const parseErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'An unexpected error occurred. Please try again.';
+};
 
 export default function LeadForm() {
   const { toast } = useToast();
@@ -33,33 +39,53 @@ export default function LeadForm() {
 
   const mutation = useMutation({
     mutationFn: async (data: FormData) => {
-      const response = await fetch("/api/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to submit form");
+      try {
+        const response = await fetch("/api/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          throw new Error(errorData?.message || `Error: ${response.status} ${response.statusText}`);
+        }
+
+        const responseData = await response.json();
+        if (!responseData || typeof responseData !== 'object') {
+          throw new Error('Invalid response from server');
+        }
+
+        return responseData;
+      } catch (error) {
+        throw new Error(parseErrorMessage(error));
       }
-      
-      return response.json();
     },
     onSuccess: () => {
       toast({
         title: "Form submitted successfully",
-        description: "We'll contact you shortly to discuss your case."
+        description: "We'll contact you shortly to discuss your case.",
+        variant: "default"
       });
       form.reset();
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to submit form. Please try again.",
+        description: parseErrorMessage(error),
         variant: "destructive"
       });
     }
   });
+
+  const onSubmit = (data: FormData) => {
+    // Normalize phone number before submission
+    const normalizedData = {
+      ...data,
+      phone: data.phone.replace(/[^\d]/g, '')
+    };
+    mutation.mutate(normalizedData);
+  };
 
   return (
     <section id="lead-form" className="py-16 bg-background">
@@ -69,7 +95,7 @@ export default function LeadForm() {
         </h2>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -78,7 +104,12 @@ export default function LeadForm() {
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="John" {...field} />
+                      <Input 
+                        placeholder="John" 
+                        {...field} 
+                        aria-label="First Name"
+                        disabled={mutation.isPending}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -92,7 +123,12 @@ export default function LeadForm() {
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Doe" {...field} />
+                      <Input 
+                        placeholder="Doe" 
+                        {...field} 
+                        aria-label="Last Name"
+                        disabled={mutation.isPending}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -107,7 +143,13 @@ export default function LeadForm() {
                 <FormItem>
                   <FormLabel>Phone Number</FormLabel>
                   <FormControl>
-                    <Input type="tel" placeholder="(555) 555-5555" {...field} />
+                    <Input 
+                      type="tel" 
+                      placeholder="(555) 555-5555" 
+                      {...field} 
+                      aria-label="Phone Number"
+                      disabled={mutation.isPending}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -121,7 +163,13 @@ export default function LeadForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="john@example.com" {...field} />
+                    <Input 
+                      type="email" 
+                      placeholder="john@example.com" 
+                      {...field} 
+                      aria-label="Email"
+                      disabled={mutation.isPending}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -138,6 +186,8 @@ export default function LeadForm() {
                     <Textarea
                       placeholder="Please share any relevant details about your case"
                       {...field}
+                      aria-label="Case Details"
+                      disabled={mutation.isPending}
                     />
                   </FormControl>
                   <FormMessage />
@@ -150,6 +200,7 @@ export default function LeadForm() {
               className="w-full"
               size="lg"
               disabled={mutation.isPending}
+              aria-label={mutation.isPending ? "Submitting form..." : "Submit Case Review"}
             >
               {mutation.isPending ? "Submitting..." : "Submit Case Review"}
             </Button>
