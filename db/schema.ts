@@ -19,6 +19,8 @@ export const templates = pgTable("templates", {
   description: text("description"),
   structure: jsonb("structure").notNull(),
   defaultStyles: jsonb("default_styles"),
+  phoneNumber: text("phone_number"), // Added phone number field
+  deploymentConfig: jsonb("deployment_config"), // Added deployment configuration
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -128,6 +128,7 @@ export default function Dashboard() {
     mutationFn: async (data: {
       name: string;
       description: string;
+      phoneNumber: string;
       structure: any;
     }) => {
       const res = await fetch("/api/templates", {
@@ -223,7 +224,7 @@ export default function Dashboard() {
   });
 
   const createContent = useMutation({
-    mutationFn: async (data: { url: string }) => {
+    mutationFn: async (data: { url: string; templateId: string; phoneNumber: string }) => {
       const res = await fetch("/api/generate-from-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -340,6 +341,7 @@ export default function Dashboard() {
                       createTemplate.mutate({
                         name: formData.get("name") as string,
                         description: formData.get("description") as string,
+                        phoneNumber: formData.get("phoneNumber") as string,
                         structure: {
                           sections: [
                             {
@@ -415,6 +417,15 @@ export default function Dashboard() {
                         id="description"
                         name="description"
                         placeholder="Enter template description"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phoneNumber">Contact Phone Number</Label>
+                      <Input
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        placeholder="Enter phone number for leads"
+                        required
                       />
                     </div>
                     <Button type="submit">Create Template</Button>
@@ -826,12 +837,16 @@ export default function Dashboard() {
                   onSubmit={(e) => {
                     e.preventDefault();
                     const form = e.target as HTMLFormElement;
-                    const url = new FormData(form).get("url") as string;
+                    const formData = new FormData(form);
                     toast({
                       title: "Generating Content",
                       description: "This may take a few moments...",
                     });
-                    createContent.mutate({ url });
+                    createContent.mutate({
+                      url: formData.get("url") as string,
+                      templateId: formData.get("templateId") as string,
+                      phoneNumber: formData.get("phoneNumber") as string,
+                    });
                   }}
                   className="space-y-4"
                 >
@@ -840,8 +855,31 @@ export default function Dashboard() {
                     <Input
                       id="url"
                       name="url"
-                      placeholder="Enter URL"
+                      placeholder="Enter URL to generate content from"
                       required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="templateId">Template (Optional)</Label>
+                    <Select name="templateId">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select template" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templates?.map((template) => (
+                          <SelectItem key={template.id} value={template.id.toString()}>
+                            {template.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneNumber">Contact Phone Number (Optional)</Label>
+                    <Input
+                      id="phoneNumber"
+                      name="phoneNumber"
+                      placeholder="Enter phone number for leads"
                     />
                   </div>
                   <Button type="submit" disabled={createContent.isPending}>

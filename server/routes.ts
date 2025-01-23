@@ -45,10 +45,76 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/templates", async (req, res) => {
     try {
-      const validatedData = insertTemplateSchema.parse(req.body);
-      const result = await db.insert(templates).values(validatedData).returning();
-      res.json(result[0]);
+      const { name, description, structure, phoneNumber } = req.body;
+
+      // 1. Create template with phone number
+      const templateData = {
+        name,
+        description,
+        structure,
+        phoneNumber,
+        deploymentConfig: {
+          domain: `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.masslawsuits.com`,
+          analyticsEnabled: true,
+        },
+      };
+
+      const validatedData = insertTemplateSchema.parse(templateData);
+      const template = await db.insert(templates).values(validatedData).returning();
+
+      // 2. Generate initial content for the template
+      const placeholderContent = {
+        drugName: "Sample Drug Name",
+        condition: "Sample Medical Condition",
+        content: {
+          campaign: {
+            title: name,
+            description: description || "Legal representation for affected individuals",
+            sections: structure.sections.map(section => ({
+              ...section,
+              content: {
+                ...section.content,
+                phoneNumber: phoneNumber
+              }
+            }))
+          }
+        },
+        version: 1,
+        language: "en",
+        isActive: true,
+        templateId: template[0].id
+      };
+
+      // 3. Create content version
+      const contentVersion = await db.insert(contentVersions)
+        .values(placeholderContent)
+        .returning();
+
+      // 4. Create deployment
+      const deploymentData = {
+        contentVersionId: contentVersion[0].id,
+        domain: templateData.deploymentConfig.domain,
+        status: "pending",
+        configuration: {
+          template: template[0].id,
+          phoneNumber: phoneNumber,
+          analytics: templateData.deploymentConfig.analyticsEnabled
+        }
+      };
+
+      const deployment = await db.insert(deployments)
+        .values(deploymentData)
+        .returning();
+
+      // Return complete data
+      res.json({
+        template: template[0],
+        contentVersion: contentVersion[0],
+        deployment: deployment[0]
+      });
+
     } catch (error) {
+      console.error("Error creating template:", error);
       res.status(400).json({ error: "Invalid template data" });
     }
   });
@@ -244,22 +310,40 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/generate-from-url", async (req, res) => {
     try {
-      const { url } = req.body;
+      const { url, templateId, phoneNumber } = req.body;
       if (!url) {
         return res.status(400).json({ error: "URL is required" });
       }
 
-      // First generate the content
+      // Get template if provided, or use default
+      let templateData;
+      if (templateId) {
+        templateData = await db.query.templates.findFirst({
+          where: eq(templates.id, parseInt(templateId))
+        });
+      } else {
+        templateData = await db.query.templates.findFirst();
+      }
+
+      if (!templateData) {
+        return res.status(400).json({ error: "No template available" });
+      }
+
+      // Generate content from URL
       const generatedContent = await generateContentFromUrl(url);
 
-      // Create a new content version with the generated content
+      // Create content version with template structure
       const contentVersion = {
         drugName: generatedContent.campaign.title,
         condition: generatedContent.campaign.description,
-        content: generatedContent,
+        content: {
+          ...generatedContent,
+          phoneNumber: phoneNumber || templateData.phoneNumber
+        },
         version: 1,
         language: "en",
         isActive: true,
+        templateId: templateData.id,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -267,7 +351,27 @@ export function registerRoutes(app: Express): Server {
       // Insert into database
       const result = await db.insert(contentVersions).values(contentVersion).returning();
 
-      res.json(result[0]);
+      // Create deployment
+      const deploymentData = {
+        contentVersionId: result[0].id,
+        domain: `${contentVersion.drugName.toLowerCase().replace(/[^a-z0-9]/g, '-')}.masslawsuits.com`,
+        status: "pending",
+        configuration: {
+          template: templateData.id,
+          phoneNumber: phoneNumber || templateData.phoneNumber,
+          analytics: true
+        }
+      };
+
+      const deployment = await db.insert(deployments)
+        .values(deploymentData)
+        .returning();
+
+      res.json({
+        contentVersion: result[0],
+        deployment: deployment[0]
+      });
+
     } catch (error) {
       console.error("URL content generation error:", error);
       res.status(500).json({ error: "Failed to generate content from URL" });
