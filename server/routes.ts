@@ -1,31 +1,60 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { leads, insertLeadSchema, contentVersions, refreshSchedules, updateSuggestions, languageVersions, insertContentVersionSchema, insertRefreshScheduleSchema, templates, sections, deployments, assets, insertTemplateSchema, insertSectionSchema, insertDeploymentSchema, states, stateLocalizations, localizationJobs } from "@db/schema";
-import { generateCampaignContent, generateContentFromUrl, extractContentFromCompetitor } from "../client/src/lib/services/content-generator";
-import { analyzeContentForUpdates, compareWithCompetitorContent, calculateNextRefreshDate } from "../client/src/lib/services/content-refresh";
-import { translateContent, validateTranslation, getSupportedLanguages } from "../client/src/lib/services/content-translator";
-import { aiLocalizationService } from "./services/ai-localization";
+import { leads, insertLeadSchema, contentVersions, templates, sections, adminUsers, insertAdminUserSchema } from "@db/schema";
 import { eq, and, desc } from "drizzle-orm";
-import fs from "fs/promises";
-import path from "path";
+import { isAdmin, isAuthenticated, isNotAuthenticated } from "./middleware/auth";
+import passport from "passport";
+import bcrypt from "bcryptjs";
 
 export function registerRoutes(app: Express): Server {
-  // Add GET endpoint for content versions
-  app.get("/api/content-versions", async (_req, res) => {
+  // Public routes (no auth required)
+  app.post("/api/leads", async (req, res) => {
     try {
-      const allContentVersions = await db.query.contentVersions.findMany({
-        orderBy: (versions) => desc(versions.createdAt),
-      });
-      res.json(allContentVersions);
+      const validatedData = insertLeadSchema.parse(req.body);
+      const result = await db.insert(leads).values(validatedData).returning();
+      res.json(result[0]);
     } catch (error) {
-      console.error("Error fetching content versions:", error);
-      res.status(500).json({ error: "Failed to fetch content versions" });
+      res.status(400).json({ error: "Invalid lead data" });
     }
   });
 
-  // CMS Routes
-  app.get("/api/templates", async (_req, res) => {
+  // Authentication routes
+  app.post("/api/auth/login", isNotAuthenticated, passport.authenticate("local"), (req, res) => {
+    res.json({ message: "Logged in successfully" });
+  });
+
+  app.post("/api/auth/logout", isAuthenticated, (req, res) => {
+    req.logout(() => {
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  // Admin user management (protected)
+  app.post("/api/admin/users", isAdmin, async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const userData = {
+        username,
+        password: hashedPassword,
+        role: 'admin',
+      };
+
+      const validatedData = insertAdminUserSchema.parse(userData);
+      const result = await db.insert(adminUsers).values(validatedData).returning();
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = result[0];
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid user data" });
+    }
+  });
+
+  // Admin routes (protected with isAdmin middleware)
+  app.get("/api/admin/templates", isAdmin, async (_req, res) => {
     try {
       const allTemplates = await db.query.templates.findMany({
         with: {
@@ -39,88 +68,27 @@ export function registerRoutes(app: Express): Server {
       });
       res.json(allTemplates);
     } catch (error) {
-      console.error("Error fetching templates:", error);
       res.status(500).json({ error: "Failed to fetch templates" });
     }
   });
 
-  app.post("/api/templates", async (req, res) => {
+  app.post("/api/admin/templates", isAdmin, async (req, res) => {
     try {
       const { name, description, structure, phoneNumber } = req.body;
-
-      // 1. Create template with phone number
-      const templateData = {
+      const validatedData = {
         name,
         description,
         structure,
         phoneNumber,
-        deploymentConfig: {
-          domain: `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.masslawsuits.com`,
-          analyticsEnabled: true,
-        },
       };
-
-      const validatedData = insertTemplateSchema.parse(templateData);
-      const template = await db.insert(templates).values(validatedData).returning();
-
-      // 2. Generate initial content for the template
-      const placeholderContent = {
-        drugName: "Sample Drug Name",
-        condition: "Sample Medical Condition",
-        content: {
-          campaign: {
-            title: name,
-            description: description || "Legal representation for affected individuals",
-            sections: structure.sections.map(section => ({
-              ...section,
-              content: {
-                ...section.content,
-                phoneNumber: phoneNumber
-              }
-            }))
-          }
-        },
-        version: 1,
-        language: "en",
-        isActive: true,
-        templateId: template[0].id
-      };
-
-      // 3. Create content version
-      const contentVersion = await db.insert(contentVersions)
-        .values(placeholderContent)
-        .returning();
-
-      // 4. Create deployment
-      const deploymentData = {
-        contentVersionId: contentVersion[0].id,
-        domain: templateData.deploymentConfig.domain,
-        status: "pending",
-        configuration: {
-          template: template[0].id,
-          phoneNumber: phoneNumber,
-          analytics: templateData.deploymentConfig.analyticsEnabled
-        }
-      };
-
-      const deployment = await db.insert(deployments)
-        .values(deploymentData)
-        .returning();
-
-      // Return complete data
-      res.json({
-        template: template[0],
-        contentVersion: contentVersion[0],
-        deployment: deployment[0]
-      });
-
+      const result = await db.insert(templates).values(validatedData).returning();
+      res.json(result[0]);
     } catch (error) {
-      console.error("Error creating template:", error);
       res.status(400).json({ error: "Invalid template data" });
     }
   });
 
-  app.get("/api/templates/:id", async (req, res) => {
+  app.get("/api/admin/templates/:id", isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const template = await db.query.templates.findFirst({
@@ -145,26 +113,9 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.post("/api/templates/:id/sections", async (req, res) => {
+  app.put("/api/admin/templates/:id/sections/:sectionId", isAdmin, async (req, res) => {
     try {
-      const { id } = req.params;
-      const sectionData = {
-        ...req.body,
-        templateId: parseInt(id),
-      };
-
-      const validatedData = insertSectionSchema.parse(sectionData);
-      const result = await db.insert(sections).values(validatedData).returning();
-      res.json(result[0]);
-    } catch (error) {
-      res.status(400).json({ error: "Invalid section data" });
-    }
-  });
-
-  // New endpoint to update sections
-  app.put("/api/templates/:templateId/sections/:sectionId", async (req, res) => {
-    try {
-      const { templateId, sectionId } = req.params;
+      const { id, sectionId } = req.params;
       const updateData = req.body;
 
       const result = await db
@@ -173,7 +124,7 @@ export function registerRoutes(app: Express): Server {
         .where(
           and(
             eq(sections.id, parseInt(sectionId)),
-            eq(sections.templateId, parseInt(templateId))
+            eq(sections.templateId, parseInt(id))
           )
         )
         .returning();
@@ -184,70 +135,60 @@ export function registerRoutes(app: Express): Server {
 
       res.json(result[0]);
     } catch (error) {
-      console.error("Error updating section:", error);
       res.status(400).json({ error: "Invalid section data" });
     }
   });
 
-  // New endpoint to update section order
-  app.put("/api/templates/:templateId/sections/reorder", async (req, res) => {
+  // Public template view route - optimized for landing pages
+  app.get("/api/templates/:id/view", async (req, res) => {
     try {
-      const { templateId } = req.params;
-      const { sectionIds } = req.body as { sectionIds: number[] };
-
-      const updates = sectionIds.map((id, index) =>
-        db
-          .update(sections)
-          .set({ order: index })
-          .where(
-            and(
-              eq(sections.id, id),
-              eq(sections.templateId, parseInt(templateId))
-            )
-          )
-      );
-
-      await Promise.all(updates);
-
-      const updatedSections = await db.query.sections.findMany({
-        where: eq(sections.templateId, parseInt(templateId)),
-        orderBy: (sections) => sections.order,
-      });
-
-      res.json(updatedSections);
-    } catch (error) {
-      console.error("Error reordering sections:", error);
-      res.status(400).json({ error: "Failed to reorder sections" });
-    }
-  });
-
-  // Deployment Routes
-  app.post("/api/deployments", async (req, res) => {
-    try {
-      const validatedData = insertDeploymentSchema.parse(req.body);
-      const result = await db.insert(deployments).values(validatedData).returning();
-      res.json(result[0]);
-    } catch (error) {
-      res.status(400).json({ error: "Invalid deployment data" });
-    }
-  });
-
-  app.get("/api/deployments", async (_req, res) => {
-    try {
-      const allDeployments = await db.query.deployments.findMany({
-        with: {
-          contentVersion: true,
+      const { id } = req.params;
+      const template = await db.query.templates.findFirst({
+        where: eq(templates.id, parseInt(id)),
+        columns: {
+          id: true,
+          name: true,
+          structure: true,
+          phoneNumber: true,
         },
-        orderBy: (deployments) => desc(deployments.createdAt),
+        with: {
+          sections: {
+            orderBy: (sections) => sections.order,
+            columns: {
+              id: true,
+              name: true,
+              type: true,
+              content: true,
+              order: true,
+              styles: true,
+            }
+          }
+        }
       });
-      res.json(allDeployments);
+
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      res.json(template);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch deployments" });
+      res.status(500).json({ error: "Failed to fetch template" });
     }
   });
 
-  // Content Version Management
-  app.post("/api/content-versions", async (req, res) => {
+  // Add GET endpoint for content versions
+  app.get("/api/content-versions", async (_req, res) => {
+    try {
+      const allContentVersions = await db.query.contentVersions.findMany({
+        orderBy: (versions) => desc(versions.createdAt),
+      });
+      res.json(allContentVersions);
+    } catch (error) {
+      console.error("Error fetching content versions:", error);
+      res.status(500).json({ error: "Failed to fetch content versions" });
+    }
+  });
+  app.post("/api/content-versions", isAdmin, async (req, res) => {
     try {
       const data = insertContentVersionSchema.parse(req.body);
       const result = await db.insert(contentVersions).values(data).returning();
@@ -286,19 +227,33 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Leads
-  app.post("/api/leads", async (req, res) => {
+  //Deployment Routes
+  app.post("/api/deployments", isAdmin, async (req, res) => {
     try {
-      const validatedData = insertLeadSchema.parse(req.body);
-      const result = await db.insert(leads).values(validatedData).returning();
+      const validatedData = insertDeploymentSchema.parse(req.body);
+      const result = await db.insert(deployments).values(validatedData).returning();
       res.json(result[0]);
     } catch (error) {
-      res.status(400).json({ error: "Invalid lead data" });
+      res.status(400).json({ error: "Invalid deployment data" });
+    }
+  });
+
+  app.get("/api/deployments", async (_req, res) => {
+    try {
+      const allDeployments = await db.query.deployments.findMany({
+        with: {
+          contentVersion: true,
+        },
+        orderBy: (deployments) => desc(deployments.createdAt),
+      });
+      res.json(allDeployments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch deployments" });
     }
   });
 
   // Content Generation
-  app.post("/api/generate-content", async (req, res) => {
+  app.post("/api/generate-content", isAdmin, async (req, res) => {
     try {
       const config = req.body;
       const content = await generateCampaignContent(config);
@@ -309,7 +264,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.post("/api/generate-from-url", async (req, res) => {
+  app.post("/api/generate-from-url", isAdmin, async (req, res) => {
     try {
       const { url, templateId, phoneNumber } = req.body;
       if (!url) {
@@ -380,7 +335,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Refresh and Update Management
-  app.post("/api/content-versions/:id/schedule", async (req, res) => {
+  app.post("/api/content-versions/:id/schedule", isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const { frequency } = req.body;
@@ -409,7 +364,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.post("/api/content-versions/:id/analyze", async (req, res) => {
+  app.post("/api/content-versions/:id/analyze", isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const contentVersion = await db.query.contentVersions.findFirst({
@@ -445,7 +400,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.post("/api/content-versions/:id/compare", async (req, res) => {
+  app.post("/api/content-versions/:id/compare", isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const { competitorUrl } = req.body;
@@ -486,7 +441,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Test endpoint using sample content
-  app.get("/api/test-content-generation", async (req, res) => {
+  app.get("/api/test-content-generation", isAdmin, async (req, res) => {
     try {
       const sampleContent = await fs.readFile(
         path.resolve(
@@ -517,7 +472,7 @@ export function registerRoutes(app: Express): Server {
     res.json(languages);
   });
 
-  app.post("/api/content-versions/:id/translate", async (req, res) => {
+  app.post("/api/content-versions/:id/translate", isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const { language } = req.body;
@@ -566,7 +521,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.post("/api/language-versions/:id/validate", async (req, res) => {
+  app.post("/api/language-versions/:id/validate", isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const languageVersion = await db.query.languageVersions.findFirst({
@@ -638,7 +593,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.post("/api/content-versions/:id/localize", async (req, res) => {
+  app.post("/api/content-versions/:id/localize", isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const { stateCode } = req.body;
@@ -710,7 +665,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Batch localization endpoint
-  app.post("/api/content-versions/:id/localize-batch", async (req, res) => {
+  app.post("/api/content-versions/:id/localize-batch", isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const { stateCodes } = req.body;

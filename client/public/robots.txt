@@ -1,0 +1,10 @@
+User-agent: *
+Disallow: /admin
+Disallow: /api
+Disallow: /login
+Allow: /
+
+# Block all bots from accessing admin and API routes
+User-agent: *
+Disallow: /admin/*
+Disallow: /api/*
