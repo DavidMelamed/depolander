@@ -25,6 +25,16 @@ export const templates = pgTable("templates", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const states = pgTable("states", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  region: text("region").notNull(),
+  metadata: jsonb("metadata").notNull(), // Population, demographics, relevant statistics
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Tables with foreign keys
 export const contentVersions = pgTable("content_versions", {
   id: serial("id").primaryKey(),
@@ -107,6 +117,44 @@ export const languageVersions = pgTable("language_versions", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const stateLocalizations = pgTable("state_localizations", {
+  id: serial("id").primaryKey(),
+  stateId: integer("state_id").notNull().references(() => states.id),
+  contentVersionId: integer("content_version_id").notNull().references(() => contentVersions.id),
+  localizedContent: jsonb("localized_content").notNull(),
+  localStats: jsonb("local_stats").notNull(),
+  seoMetadata: jsonb("seo_metadata").notNull(),
+  status: text("status").notNull().default('draft'),
+  publishedUrl: text("published_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const stateAssets = pgTable("state_assets", {
+  id: serial("id").primaryKey(),
+  stateLocalizationId: integer("state_localization_id").notNull().references(() => stateLocalizations.id),
+  type: text("type").notNull(),
+  url: text("url").notNull(),
+  alt: text("alt").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const localizationJobs = pgTable("localization_jobs", {
+  id: serial("id").primaryKey(),
+  contentVersionId: integer("content_version_id").notNull().references(() => contentVersions.id),
+  stateId: integer("state_id").notNull().references(() => states.id),
+  status: text("status").notNull().default('pending'),
+  currentStep: text("current_step"),
+  progress: integer("progress").default(0),
+  error: text("error"),
+  result: jsonb("result"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const templatesRelations = relations(templates, ({ many }) => ({
   sections: many(sections),
@@ -134,30 +182,47 @@ export const contentVersionsRelations = relations(contentVersions, ({ many, one 
   }),
   deployments: many(deployments),
   assets: many(assets),
+  stateLocalizations: many(stateLocalizations),
 }));
 
-export const refreshSchedulesRelations = relations(refreshSchedules, ({ one }) => ({
+export const statesRelations = relations(states, ({ many }) => ({
+  localizations: many(stateLocalizations),
+  localizationJobs: many(localizationJobs),
+}));
+
+export const stateLocalizationsRelations = relations(stateLocalizations, ({ many, one }) => ({
+  state: one(states, {
+    fields: [stateLocalizations.stateId],
+    references: [states.id],
+  }),
   contentVersion: one(contentVersions, {
-    fields: [refreshSchedules.contentVersionId],
+    fields: [stateLocalizations.contentVersionId],
+    references: [contentVersions.id],
+  }),
+  assets: many(stateAssets),
+}));
+
+export const stateAssetsRelations = relations(stateAssets, ({ one }) => ({
+  stateLocalization: one(stateLocalizations, {
+    fields: [stateAssets.stateLocalizationId],
+    references: [stateLocalizations.id],
+  }),
+}));
+
+export const localizationJobsRelations = relations(localizationJobs, ({ one }) => ({
+  state: one(states, {
+    fields: [localizationJobs.stateId],
+    references: [states.id],
+  }),
+  contentVersion: one(contentVersions, {
+    fields: [localizationJobs.contentVersionId],
     references: [contentVersions.id],
   }),
 }));
 
-export const updateSuggestionsRelations = relations(updateSuggestions, ({ one }) => ({
-  contentVersion: one(contentVersions, {
-    fields: [updateSuggestions.contentVersionId],
-    references: [contentVersions.id],
-  }),
-}));
 
-export const languageVersionsRelations = relations(languageVersions, ({ one }) => ({
-  contentVersion: one(contentVersions, {
-    fields: [languageVersions.contentVersionId],
-    references: [contentVersions.id],
-  }),
-}));
-
-// Types and Schemas
+// Types
+export type Lead = InferModel<typeof leads>;
 export type Template = InferModel<typeof templates>;
 export type ContentVersion = InferModel<typeof contentVersions>;
 export type Section = InferModel<typeof sections>;
@@ -166,49 +231,29 @@ export type Asset = InferModel<typeof assets>;
 export type RefreshSchedule = InferModel<typeof refreshSchedules>;
 export type UpdateSuggestion = InferModel<typeof updateSuggestions>;
 export type LanguageVersion = InferModel<typeof languageVersions>;
-export type Lead = InferModel<typeof leads>;
+export type State = InferModel<typeof states>;
+export type StateLocalization = InferModel<typeof stateLocalizations>;
+export type StateAsset = InferModel<typeof stateAssets>;
+export type LocalizationJob = InferModel<typeof localizationJobs>;
 
+// Schemas
 export const insertLeadSchema = createInsertSchema(leads);
 export const selectLeadSchema = createSelectSchema(leads);
-export type InsertLead = typeof leads.$inferInsert;
-export type SelectLead = typeof leads.$inferSelect;
-
-export const insertContentVersionSchema = createInsertSchema(contentVersions);
-export const selectContentVersionSchema = createSelectSchema(contentVersions);
-export type InsertContentVersion = typeof contentVersions.$inferInsert;
-export type SelectContentVersion = typeof contentVersions.$inferSelect;
-
-export const insertRefreshScheduleSchema = createInsertSchema(refreshSchedules);
-export const selectRefreshScheduleSchema = createSelectSchema(refreshSchedules);
-export type InsertRefreshSchedule = typeof refreshSchedules.$inferInsert;
-export type SelectRefreshSchedule = typeof refreshSchedules.$inferSelect;
-
-export const insertUpdateSuggestionSchema = createInsertSchema(updateSuggestions);
-export const selectUpdateSuggestionSchema = createSelectSchema(updateSuggestions);
-export type InsertUpdateSuggestion = typeof updateSuggestions.$inferInsert;
-export type SelectUpdateSuggestion = typeof updateSuggestions.$inferSelect;
-
-export const insertLanguageVersionSchema = createInsertSchema(languageVersions);
-export const selectLanguageVersionSchema = createSelectSchema(languageVersions);
-export type InsertLanguageVersion = typeof languageVersions.$inferInsert;
-export type SelectLanguageVersion = typeof languageVersions.$inferSelect;
-
 export const insertTemplateSchema = createInsertSchema(templates);
 export const selectTemplateSchema = createSelectSchema(templates);
-export type InsertTemplate = typeof templates.$inferInsert;
-export type SelectTemplate = typeof templates.$inferSelect;
-
+export const insertContentVersionSchema = createInsertSchema(contentVersions);
+export const selectContentVersionSchema = createSelectSchema(contentVersions);
 export const insertSectionSchema = createInsertSchema(sections);
 export const selectSectionSchema = createSelectSchema(sections);
-export type InsertSection = typeof sections.$inferInsert;
-export type SelectSection = typeof sections.$inferSelect;
-
 export const insertDeploymentSchema = createInsertSchema(deployments);
 export const selectDeploymentSchema = createSelectSchema(deployments);
-export type InsertDeployment = typeof deployments.$inferInsert;
-export type SelectDeployment = typeof deployments.$inferSelect;
-
 export const insertAssetSchema = createInsertSchema(assets);
 export const selectAssetSchema = createSelectSchema(assets);
-export type InsertAsset = typeof assets.$inferInsert;
-export type SelectAsset = typeof assets.$inferSelect;
+export const insertStateSchema = createInsertSchema(states);
+export const selectStateSchema = createSelectSchema(states);
+export const insertStateLocalizationSchema = createInsertSchema(stateLocalizations);
+export const selectStateLocalizationSchema = createSelectSchema(stateLocalizations);
+export const insertStateAssetSchema = createInsertSchema(stateAssets);
+export const selectStateAssetSchema = createSelectSchema(stateAssets);
+export const insertLocalizationJobSchema = createInsertSchema(localizationJobs);
+export const selectLocalizationJobSchema = createSelectSchema(localizationJobs);

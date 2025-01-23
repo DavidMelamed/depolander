@@ -1,10 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { leads, insertLeadSchema, contentVersions, refreshSchedules, updateSuggestions, languageVersions, insertContentVersionSchema, insertRefreshScheduleSchema, templates, sections, deployments, assets, insertTemplateSchema, insertSectionSchema, insertDeploymentSchema } from "@db/schema";
+import { leads, insertLeadSchema, contentVersions, refreshSchedules, updateSuggestions, languageVersions, insertContentVersionSchema, insertRefreshScheduleSchema, templates, sections, deployments, assets, insertTemplateSchema, insertSectionSchema, insertDeploymentSchema, states, stateLocalizations, localizationJobs } from "@db/schema";
 import { generateCampaignContent, generateContentFromUrl, extractContentFromCompetitor } from "../client/src/lib/services/content-generator";
 import { analyzeContentForUpdates, compareWithCompetitorContent, calculateNextRefreshDate } from "../client/src/lib/services/content-refresh";
 import { translateContent, validateTranslation, getSupportedLanguages } from "../client/src/lib/services/content-translator";
+import { aiLocalizationService } from "./services/ai-localization";
 import { eq, and, desc } from "drizzle-orm";
 import fs from "fs/promises";
 import path from "path";
@@ -589,6 +590,154 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Validation error:", error);
       res.status(500).json({ error: "Failed to validate translation" });
+    }
+  });
+
+  // State Localization Routes
+  app.get("/api/states", async (_req, res) => {
+    try {
+      const allStates = await db.query.states.findMany({
+        with: {
+          localizations: true,
+          localizationJobs: {
+            orderBy: (jobs) => desc(jobs.createdAt),
+            limit: 1,
+          },
+        },
+      });
+      res.json(allStates);
+    } catch (error) {
+      console.error("Error fetching states:", error);
+      res.status(500).json({ error: "Failed to fetch states" });
+    }
+  });
+
+  app.get("/api/states/:code", async (req, res) => {
+    try {
+      const { code } = req.params;
+      const state = await db.query.states.findFirst({
+        where: eq(states.code, code.toUpperCase()),
+        with: {
+          localizations: {
+            with: {
+              contentVersion: true,
+              assets: true,
+            },
+          },
+        },
+      });
+
+      if (!state) {
+        return res.status(404).json({ error: "State not found" });
+      }
+
+      res.json(state);
+    } catch (error) {
+      console.error("Error fetching state:", error);
+      res.status(500).json({ error: "Failed to fetch state" });
+    }
+  });
+
+  app.post("/api/content-versions/:id/localize", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { stateCode } = req.body;
+
+      if (!stateCode) {
+        return res.status(400).json({ error: "State code is required" });
+      }
+
+      const contentVersion = await db.query.contentVersions.findFirst({
+        where: eq(contentVersions.id, parseInt(id)),
+      });
+
+      if (!contentVersion) {
+        return res.status(404).json({ error: "Content version not found" });
+      }
+
+      // Start localization job
+      const job = await aiLocalizationService.startLocalizationJob(
+        stateCode,
+        contentVersion.id
+      );
+
+      res.json(job);
+    } catch (error) {
+      console.error("Error starting localization:", error);
+      res.status(500).json({ error: "Failed to start localization" });
+    }
+  });
+
+  app.get("/api/localization-jobs/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const job = await db.query.localizationJobs.findFirst({
+        where: eq(localizationJobs.id, parseInt(id)),
+        with: {
+          state: true,
+          contentVersion: true,
+        },
+      });
+
+      if (!job) {
+        return res.status(404).json({ error: "Localization job not found" });
+      }
+
+      res.json(job);
+    } catch (error) {
+      console.error("Error fetching localization job:", error);
+      res.status(500).json({ error: "Failed to fetch localization job" });
+    }
+  });
+
+  app.get("/api/content-versions/:id/localizations", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const localizations = await db.query.stateLocalizations.findMany({
+        where: eq(stateLocalizations.contentVersionId, parseInt(id)),
+        with: {
+          state: true,
+          assets: true,
+        },
+        orderBy: (loc) => loc.createdAt,
+      });
+
+      res.json(localizations);
+    } catch (error) {
+      console.error("Error fetching localizations:", error);
+      res.status(500).json({ error: "Failed to fetch localizations" });
+    }
+  });
+
+  // Batch localization endpoint
+  app.post("/api/content-versions/:id/localize-batch", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { stateCodes } = req.body;
+
+      if (!Array.isArray(stateCodes) || !stateCodes.length) {
+        return res.status(400).json({ error: "State codes array is required" });
+      }
+
+      const contentVersion = await db.query.contentVersions.findFirst({
+        where: eq(contentVersions.id, parseInt(id)),
+      });
+
+      if (!contentVersion) {
+        return res.status(404).json({ error: "Content version not found" });
+      }
+
+      // Start localization jobs for each state
+      const jobs = await Promise.all(
+        stateCodes.map((stateCode) =>
+          aiLocalizationService.startLocalizationJob(stateCode, contentVersion.id)
+        )
+      );
+
+      res.json(jobs);
+    } catch (error) {
+      console.error("Error starting batch localization:", error);
+      res.status(500).json({ error: "Failed to start batch localization" });
     }
   });
 
