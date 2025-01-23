@@ -2,6 +2,7 @@ import HeroSection from "@/components/hero-section";
 import BenefitsSection from "@/components/benefits-section";
 import EvidenceSection from "@/components/evidence-section";
 import SettlementSection from "@/components/settlement-section";
+import ContentAccordion from "@/components/content-accordion";
 import CallBanner from "@/components/call-banner";
 import { CAMPAIGN_INFO, DISCLAIMER } from "@/lib/constants";
 
@@ -25,6 +26,7 @@ export default function Home() {
         <BenefitsSection />
         <EvidenceSection />
         <SettlementSection />
+        <ContentAccordion />
       </main>
 
       <footer className="bg-muted py-6 sm:py-8">
