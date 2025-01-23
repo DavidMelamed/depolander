@@ -17,7 +17,7 @@ import { queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import SectionEditor from "@/components/section-editor";
 import { ColorSchemeSelector } from "@/components/ui/color-scheme-selector";
-import { TemplatePreview } from "@/components/template-preview"; 
+import { TemplatePreview } from "@/components/template-preview";
 
 interface ContentVersion {
   id: number;
@@ -234,7 +234,7 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/content-versions"] });
       toast({
         title: "Success",
-        description: "New content generated successfully",
+        description: "New content generated successfully. Check the Content tab to view it.",
       });
     },
   });
@@ -813,6 +813,10 @@ export default function Dashboard() {
                     e.preventDefault();
                     const form = e.target as HTMLFormElement;
                     const url = new FormData(form).get("url") as string;
+                    toast({
+                      title: "Generating Content",
+                      description: "This may take a few moments...",
+                    });
                     createContent.mutate({ url });
                   }}
                   className="space-y-4"
@@ -826,7 +830,9 @@ export default function Dashboard() {
                       required
                     />
                   </div>
-                  <Button type="submit">Generate Content</Button>
+                  <Button type="submit" disabled={createContent.isPending}>
+                    {createContent.isPending ? "Generating..." : "Generate Content"}
+                  </Button>
                 </form>
               </CardContent>
             </Card>

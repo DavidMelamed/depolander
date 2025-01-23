@@ -235,8 +235,26 @@ export function registerRoutes(app: Express): Server {
       if (!url) {
         return res.status(400).json({ error: "URL is required" });
       }
-      const content = await generateContentFromUrl(url);
-      res.json(content);
+
+      // First generate the content
+      const generatedContent = await generateContentFromUrl(url);
+
+      // Create a new content version with the generated content
+      const contentVersion = {
+        drugName: generatedContent.campaign.title,
+        condition: generatedContent.campaign.description,
+        content: generatedContent,
+        version: 1,
+        language: "en",
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Insert into database
+      const result = await db.insert(contentVersions).values(contentVersion).returning();
+
+      res.json(result[0]);
     } catch (error) {
       console.error("URL content generation error:", error);
       res.status(500).json({ error: "Failed to generate content from URL" });
