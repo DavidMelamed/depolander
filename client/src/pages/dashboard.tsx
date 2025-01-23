@@ -66,6 +66,25 @@ interface Deployment {
   updatedAt: string;
 }
 
+interface UpdateSuggestion {
+  id: number;
+  contentVersionId: number;
+  suggestedChanges: {
+    changes: Array<{
+      field: string;
+      currentValue: string;
+      suggestedValue: string;
+      reason: string;
+      priority: "low" | "medium" | "high";
+    }>;
+    summary: string;
+  };
+  reason: string;
+  priority: "low" | "medium" | "high";
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+}
+
 export default function Dashboard() {
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
@@ -214,7 +233,28 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/content-versions"] });
       toast({
         title: "Success",
-        description: "New content version created",
+        description: "New content generated successfully",
+      });
+    },
+  });
+
+  const compareWithCompetitor = useMutation({
+    mutationFn: async ({ id, competitorUrl }: { id: number; competitorUrl: string }) => {
+      const res = await fetch(`/api/content-versions/${id}/compare`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ competitorUrl }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/content-versions", selectedVersion, "suggestions"],
+      });
+      toast({
+        title: "Success",
+        description: "Competitor analysis completed",
       });
     },
   });
@@ -270,25 +310,6 @@ export default function Dashboard() {
     enabled: !!selectedVersion,
   });
 
-  interface UpdateSuggestion {
-    id: number;
-    contentVersionId: number;
-    suggestedChanges: {
-      changes: Array<{
-        field: string;
-        currentValue: string;
-        suggestedValue: string;
-        reason: string;
-        priority: "low" | "medium" | "high";
-      }>;
-      summary: string;
-    };
-    reason: string;
-    priority: "low" | "medium" | "high";
-    status: "pending" | "approved" | "rejected";
-    createdAt: string;
-  }
-
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-8">Content Management Dashboard</h1>
@@ -297,6 +318,7 @@ export default function Dashboard() {
         <TabsList>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
+          <TabsTrigger value="ai">AI Generation</TabsTrigger>
           <TabsTrigger value="deployments">Deployments</TabsTrigger>
         </TabsList>
 
@@ -480,7 +502,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </TabsContent>
-        {/* Content Tab */}
         <TabsContent value="content">
           <div className="grid gap-4">
             <Card>
@@ -751,6 +772,115 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* New AI Generation Tab */}
+        <TabsContent value="ai">
+          <div className="grid gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Generate Content from URL</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const form = e.target as HTMLFormElement;
+                    const url = new FormData(form).get("url") as string;
+                    createContent.mutate({ url });
+                  }}
+                  className="space-y-4"
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="url">URL</Label>
+                    <Input
+                      id="url"
+                      name="url"
+                      placeholder="Enter URL"
+                      required
+                    />
+                  </div>
+                  <Button type="submit">Generate Content</Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            {selectedVersion && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Compare with Competitor</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const form = e.target as HTMLFormElement;
+                      const url = new FormData(form).get("competitorUrl") as string;
+                      compareWithCompetitor.mutate({
+                        id: selectedVersion,
+                        competitorUrl: url,
+                      });
+                    }}
+                    className="space-y-4"
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="competitorUrl">Competitor URL</Label>
+                      <Input
+                        id="competitorUrl"
+                        name="competitorUrl"
+                        placeholder="Enter competitor URL for comparison"
+                        required
+                      />
+                    </div>
+                    <Button type="submit">Compare Content</Button>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+
+            {suggestions && suggestions.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>AI Content Suggestions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {suggestions.map((suggestion) => (
+                      <Card key={suggestion.id} className="p-4">
+                        <div>
+                          <p className="font-medium">
+                            Priority: {suggestion.priority}
+                          </p>
+                          <p>{suggestion.suggestedChanges.summary}</p>
+                          <div className="mt-2">
+                            {suggestion.suggestedChanges.changes.map(
+                              (change, i) => (
+                                <div
+                                  key={i}
+                                  className="mt-2 p-2 bg-gray-50 rounded"
+                                >
+                                  <p className="font-medium">{change.field}</p>
+                                  <p className="text-sm text-gray-600">
+                                    Current: {change.currentValue}
+                                  </p>
+                                  <p className="text-sm text-green-600">
+                                    Suggested: {change.suggestedValue}
+                                  </p>
+                                  <p className="text-sm text-gray-500 mt-1">
+                                    {change.reason}
+                                  </p>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
     </div>
