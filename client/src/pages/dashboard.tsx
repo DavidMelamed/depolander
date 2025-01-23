@@ -88,7 +88,7 @@ interface UpdateSuggestion {
       reason: string;
       priority: "low" | "medium" | "high";
     }>;
-    summary: string;
+    summary?: string; // Make summary optional
   };
   reason: string;
   priority: "low" | "medium" | "high";
@@ -658,9 +658,12 @@ export default function Dashboard() {
                                       <p className="font-medium">
                                         Priority: {suggestion.priority}
                                       </p>
-                                      <p>{suggestion.suggestedChanges.summary}</p>
+                                      {suggestion.suggestedChanges?.summary && (
+                                        <p>{suggestion.suggestedChanges.summary}</p>
+                                      )}
+                                      <p className="text-sm text-gray-600 mt-1">{suggestion.reason}</p>
                                       <div className="mt-2">
-                                        {suggestion.suggestedChanges.changes.map((change, i) => (
+                                        {suggestion.suggestedChanges?.changes?.map((change, i) => (
                                           <div
                                             key={i}
                                             className="mt-2 p-2 bg-gray-50 rounded"
@@ -894,9 +897,11 @@ export default function Dashboard() {
                           <p className="font-medium">
                             Priority: {suggestion.priority}
                           </p>
-                          <p>{suggestion.suggestedChanges.summary}</p>
+                          {suggestion.suggestedChanges?.summary && (
+                            <p>{suggestion.suggestedChanges.summary}</p>
+                          )}
                           <div className="mt-2">
-                            {suggestion.suggestedChanges.changes.map((change, i) => (
+                            {suggestion.suggestedChanges?.changes?.map((change, i) => (
                               <div
                                 key={i}
                                 className="mt-2 p-2 bg-gray-50 rounded"

@@ -316,8 +316,21 @@ export function registerRoutes(app: Express): Server {
       }
 
       const suggestion = await analyzeContentForUpdates(contentVersion);
+
+      // Ensure the suggestion has the correct structure
+      const formattedSuggestion = {
+        contentVersionId: contentVersion.id,
+        suggestedChanges: {
+          changes: suggestion.changes || [],
+          summary: suggestion.summary || "",
+        },
+        reason: suggestion.reason || "Content analysis complete",
+        priority: suggestion.priority || "medium",
+        status: "pending",
+      };
+
       const result = await db.insert(updateSuggestions)
-        .values(suggestion)
+        .values(formattedSuggestion)
         .returning();
 
       res.json(result[0]);
