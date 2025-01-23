@@ -86,6 +86,8 @@ export class AILocalizationService {
         - Testimonials from local areas
         - SEO metadata optimized for the state
 
+        Important: The URL path should be in the format "depo-provera-lawsuit/${stateInfo.code.toLowerCase()}"
+
         Use this state data for context: ${JSON.stringify(stateInfo)}
         Format response as JSON matching the LocalizationResult type.`
       }
@@ -101,7 +103,10 @@ export class AILocalizationService {
       throw new Error("Failed to generate localized content");
     }
 
-    return JSON.parse(response.choices[0].message.content) as LocalizationResult;
+    const result = JSON.parse(response.choices[0].message.content) as LocalizationResult;
+    // Ensure the URL path follows our required format
+    result.seoMetadata.urlPath = `depo-provera-lawsuit/${stateInfo.code.toLowerCase()}`;
+    return result;
   }
 
   private async validateContent(content: LocalizationResult): Promise<{ isValid: boolean; feedback: string }> {
@@ -141,7 +146,7 @@ export class AILocalizationService {
   async startLocalizationJob(stateCode: string, contentVersionId: number): Promise<LocalizationJob> {
     // Get or create state
     const state = await db.query.states.findFirst({
-      where: eq(states.code, stateCode),
+      where: eq(states.code, stateCode.toUpperCase()),
     });
 
     if (!state) {
@@ -218,6 +223,7 @@ export class AILocalizationService {
         localStats: localizedContent.content.localStatistics,
         seoMetadata: localizedContent.seoMetadata,
         status: 'draft',
+        publishedUrl: localizedContent.seoMetadata.urlPath,
       }).returning();
 
       // Update job as completed
