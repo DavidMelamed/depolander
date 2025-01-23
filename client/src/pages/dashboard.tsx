@@ -52,7 +52,7 @@ interface Template {
   defaultStyles: any;
   createdAt: string;
   updatedAt: string;
-  sections?: any[]; // Added sections property to Template interface
+  sections?: any[];
 }
 
 interface Deployment {
@@ -321,10 +321,57 @@ export default function Dashboard() {
                         description: formData.get("description") as string,
                         structure: {
                           sections: [
-                            { type: "hero", editable: true },
-                            { type: "benefits", editable: true },
-                            { type: "evidence", editable: true },
-                            { type: "settlement", editable: true },
+                            {
+                              id: 1,
+                              type: "hero",
+                              name: "Hero Section",
+                              isEditable: true,
+                              order: 0,
+                              content: {
+                                title: "Default Hero Title",
+                                description: "Default hero description goes here",
+                              },
+                              styles: {
+                                backgroundColor: "#ffffff",
+                                color: "#000000",
+                                fontSize: "16px",
+                                padding: "24px",
+                              },
+                            },
+                            {
+                              id: 2,
+                              type: "benefits",
+                              name: "Benefits Section",
+                              isEditable: true,
+                              order: 1,
+                              content: {
+                                title: "Default Benefits Title",
+                                description: "Default benefits description",
+                              },
+                              styles: {
+                                backgroundColor: "#f9fafb",
+                                color: "#111827",
+                                fontSize: "16px",
+                                padding: "24px",
+                              },
+                            },
+                            {
+                              id: 3,
+                              type: "evidence",
+                              name: "Evidence Section",
+                              isEditable: true,
+                              order: 2,
+                              content: {
+                                title: "Default Evidence Title",
+                                description: "Default evidence description",
+                              },
+                              styles: {
+                                backgroundColor: "#ffffff",
+                                color: "#000000",
+                                fontSize: "16px",
+                                padding: "24px",
+                              },
+                            },
                           ],
                         },
                       });
@@ -370,15 +417,15 @@ export default function Dashboard() {
                         onClick={() => setSelectedTemplate(template.id)}
                         variant="outline"
                       >
-                        {selectedTemplate === template.id ? "Hide Sections" : "Edit Sections"}
+                        {selectedTemplate === template.id ? "Hide Editor" : "Edit Sections"}
                       </Button>
                     </div>
 
                     {/* Section Editor */}
-                    {selectedTemplate === template.id && template.structure && (
+                    {selectedTemplate === template.id && (
                       <div className="mt-4">
                         <SectionEditor
-                          sections={template.structure.sections}
+                          sections={template.sections || template.structure.sections}
                           onUpdate={async (updatedSections) => {
                             try {
                               // Update section order
@@ -433,7 +480,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </TabsContent>
-
         {/* Content Tab */}
         <TabsContent value="content">
           <div className="grid gap-4">
