@@ -28,7 +28,7 @@ export default function HeroSection() {
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center mb-6 sm:mb-8">
             <Button
               size="lg"
-              className="bg-destructive hover:bg-destructive/90 text-white w-full sm:w-auto text-sm sm:text-base animate-shake"
+              className="bg-destructive hover:bg-destructive/90 text-white w-full sm:w-auto text-sm sm:text-base hover:animate-gentle-shake"
               onClick={() => window.location.href = `tel:${CAMPAIGN_INFO.phone}`}
             >
               <Phone className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />

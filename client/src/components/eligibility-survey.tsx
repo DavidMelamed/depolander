@@ -70,7 +70,7 @@ export default function EligibilitySurvey() {
 
             <div className="space-y-3">
               <Button 
-                className="w-full text-lg py-6 animate-shake"
+                className="w-full text-lg py-6 hover:animate-gentle-shake"
                 size="lg"
                 onClick={() => window.location.href = `tel:${CAMPAIGN_INFO.phone}`}
               >
