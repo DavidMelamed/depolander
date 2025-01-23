@@ -17,6 +17,7 @@ import { queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import SectionEditor from "@/components/section-editor";
 import { ColorSchemeSelector } from "@/components/ui/color-scheme-selector";
+import { TemplatePreview } from "@/components/template-preview"; 
 
 interface ContentVersion {
   id: number;
@@ -100,33 +101,27 @@ export default function Dashboard() {
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
   const { toast } = useToast();
 
-  // Fetch templates
   const { data: templates } = useQuery<Template[]>({
     queryKey: ["/api/templates"],
   });
 
-  // Fetch content versions
   const { data: contentVersions } = useQuery<ContentVersion[]>({
     queryKey: ["/api/content-versions"],
   });
 
-  // Fetch deployments
   const { data: deployments } = useQuery<Deployment[]>({
     queryKey: ["/api/deployments"],
   });
 
-  // Fetch supported languages
   const { data: languages } = useQuery<Language[]>({
     queryKey: ["/api/languages"],
   });
 
-  // Fetch translations for selected version
   const { data: translations } = useQuery<LanguageVersion[]>({
     queryKey: ["/api/content-versions", selectedVersion, "translations"],
     enabled: !!selectedVersion,
   });
 
-  // Create new template
   const createTemplate = useMutation({
     mutationFn: async (data: {
       name: string;
@@ -150,7 +145,6 @@ export default function Dashboard() {
     },
   });
 
-  // Create deployment
   const createDeployment = useMutation({
     mutationFn: async (data: {
       contentVersionId: number;
@@ -175,7 +169,6 @@ export default function Dashboard() {
     },
   });
 
-  // Create translation
   const createTranslation = useMutation({
     mutationFn: async ({
       id,
@@ -203,7 +196,6 @@ export default function Dashboard() {
     },
   });
 
-  // Validate translation
   const validateTranslation = useMutation({
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/language-versions/${id}/validate`, {
@@ -228,7 +220,6 @@ export default function Dashboard() {
     },
   });
 
-  // Create new content version
   const createContent = useMutation({
     mutationFn: async (data: { url: string }) => {
       const res = await fetch("/api/generate-from-url", {
@@ -269,7 +260,6 @@ export default function Dashboard() {
     },
   });
 
-  // Schedule content refresh
   const scheduleRefresh = useMutation({
     mutationFn: async ({
       id,
@@ -294,7 +284,6 @@ export default function Dashboard() {
     },
   });
 
-  // Analyze content for updates
   const analyzeContent = useMutation({
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/content-versions/${id}/analyze`, {
@@ -314,7 +303,6 @@ export default function Dashboard() {
     },
   });
 
-  // Fetch suggestions for selected version
   const { data: suggestions } = useQuery<UpdateSuggestion[]>({
     queryKey: ["/api/content-versions", selectedVersion, "suggestions"],
     enabled: !!selectedVersion,
@@ -332,7 +320,6 @@ export default function Dashboard() {
           <TabsTrigger value="deployments">Deployments</TabsTrigger>
         </TabsList>
 
-        {/* Templates Tab */}
         <TabsContent value="templates">
           <Card>
             <CardHeader>
@@ -340,7 +327,6 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Create Template Form */}
                 <Card className="p-4">
                   <h3 className="text-lg font-semibold mb-4">Create New Template</h3>
                   <form
@@ -432,7 +418,6 @@ export default function Dashboard() {
                   </form>
                 </Card>
 
-                {/* Template List */}
                 {templates?.map((template) => (
                   <Card key={template.id} className="p-4">
                     <div className="flex items-center justify-between">
@@ -453,83 +438,94 @@ export default function Dashboard() {
                       </Button>
                     </div>
 
-                    {/* Section Editor */}
                     {selectedTemplate === template.id && (
-                      <div className="mt-4 space-y-4">
-                        <ColorSchemeSelector
-                          initialColors={template.structure.colorScheme}
-                          onChange={async (colors) => {
-                            try {
-                              await fetch(`/api/templates/${template.id}/color-scheme`, {
-                                method: "PUT",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify(colors),
-                              });
+                      <div className="mt-4 grid grid-cols-2 gap-4">
+                        <div className="space-y-4">
+                          <ColorSchemeSelector
+                            initialColors={template.structure.colorScheme}
+                            onChange={async (colors) => {
+                              try {
+                                await fetch(`/api/templates/${template.id}/color-scheme`, {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify(colors),
+                                });
 
-                              queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
+                                queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
 
-                              toast({
-                                title: "Success",
-                                description: "Color scheme updated",
-                              });
-                            } catch (error) {
-                              console.error("Error updating color scheme:", error);
-                              toast({
-                                title: "Error",
-                                description: "Failed to update color scheme",
-                                variant: "destructive",
-                              });
-                            }
-                          }}
-                        />
-                        <SectionEditor
-                          sections={template.sections || template.structure.sections}
-                          onUpdate={async (updatedSections) => {
-                            try {
-                              // Update section order
-                              await fetch(`/api/templates/${template.id}/sections/reorder`, {
-                                method: "PUT",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  sectionIds: updatedSections.map((s) => s.id),
-                                }),
-                              });
+                                toast({
+                                  title: "Success",
+                                  description: "Color scheme updated",
+                                });
+                              } catch (error) {
+                                console.error("Error updating color scheme:", error);
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to update color scheme",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          />
+                          <SectionEditor
+                            sections={template.sections || template.structure.sections}
+                            onUpdate={async (updatedSections) => {
+                              try {
+                                await fetch(`/api/templates/${template.id}/sections/reorder`, {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    sectionIds: updatedSections.map((s) => s.id),
+                                  }),
+                                });
 
-                              // Update individual sections
-                              await Promise.all(
-                                updatedSections.map((section) =>
-                                  fetch(
-                                    `/api/templates/${template.id}/sections/${section.id}`,
-                                    {
-                                      method: "PUT",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({
-                                        content: section.content,
-                                        styles: section.styles,
-                                      }),
-                                    }
+                                await Promise.all(
+                                  updatedSections.map((section) =>
+                                    fetch(
+                                      `/api/templates/${template.id}/sections/${section.id}`,
+                                      {
+                                        method: "PUT",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                          content: section.content,
+                                          styles: section.styles,
+                                        }),
+                                      }
+                                    )
                                   )
-                                )
-                              );
+                                );
 
-                              queryClient.invalidateQueries({
-                                queryKey: ["/api/templates"],
-                              });
+                                queryClient.invalidateQueries({
+                                  queryKey: ["/api/templates"],
+                                });
 
-                              toast({
-                                title: "Success",
-                                description: "Template sections updated",
-                              });
-                            } catch (error) {
-                              console.error("Error updating sections:", error);
-                              toast({
-                                title: "Error",
-                                description: "Failed to update template sections",
-                                variant: "destructive",
-                              });
-                            }
-                          }}
-                        />
+                                toast({
+                                  title: "Success",
+                                  description: "Template sections updated",
+                                });
+                              } catch (error) {
+                                console.error("Error updating sections:", error);
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to update template sections",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <TemplatePreview
+                            colorScheme={template.structure.colorScheme || {
+                              primary: "#1a365d",
+                              secondary: "#2c5282",
+                              background: "#ffffff",
+                              text: "#1a202c",
+                              accent: "#3182ce",
+                            }}
+                            sections={template.sections || template.structure.sections}
+                          />
+                        </div>
                       </div>
                     )}
                   </Card>
@@ -572,7 +568,6 @@ export default function Dashboard() {
                         <div className="mt-4 space-y-4">
                           <h4 className="font-semibold">Translations</h4>
 
-                          {/* Add New Translation */}
                           <Card className="p-4">
                             <h5 className="font-medium mb-2">Add Translation</h5>
                             <div className="flex gap-2">
@@ -604,7 +599,6 @@ export default function Dashboard() {
                             </div>
                           </Card>
 
-                          {/* Existing Translations */}
                           {translations?.map((translation) => (
                             <Card key={translation.id} className="p-4">
                               <div className="flex justify-between items-center">
@@ -714,7 +708,6 @@ export default function Dashboard() {
           </div>
         </TabsContent>
 
-        {/* Deployments Tab */}
         <TabsContent value="deployments">
           <Card>
             <CardHeader>
@@ -722,7 +715,6 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Create Deployment Form */}
                 <Card className="p-4">
                   <h3 className="text-lg font-semibold mb-4">Deploy Landing Page</h3>
                   <form
@@ -779,7 +771,6 @@ export default function Dashboard() {
                   </form>
                 </Card>
 
-                {/* Deployment List */}
                 {deployments?.map((deployment) => (
                   <Card key={deployment.id} className="p-4">
                     <div className="flex items-center justify-between">
@@ -810,7 +801,6 @@ export default function Dashboard() {
           </Card>
         </TabsContent>
 
-        {/* New AI Generation Tab */}
         <TabsContent value="ai">
           <div className="grid gap-4">
             <Card>
