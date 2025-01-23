@@ -5,13 +5,20 @@ import SettlementSection from "@/components/settlement-section";
 import ContentAccordion from "@/components/content-accordion";
 import CallBanner from "@/components/call-banner";
 import { CAMPAIGN_INFO, DISCLAIMER } from "@/lib/constants";
+import { ShieldCheck } from "lucide-react";
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <header className="fixed w-full top-0 bg-primary text-primary-foreground z-50 shadow-sm">
         <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center min-h-[3.5rem]">
-          <h1 className="text-base sm:text-lg font-semibold py-2 sm:py-0">Legal Alert: Depo-Provera Claims</h1>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 text-destructive/90" />
+            <div className="flex flex-col sm:flex-row sm:items-baseline gap-0 sm:gap-2">
+              <span className="text-xs sm:text-sm font-medium text-destructive/90">Legal Alert</span>
+              <h1 className="text-base sm:text-lg font-bold">Depo-Provera Claims Center</h1>
+            </div>
+          </div>
           <a 
             href={`tel:${CAMPAIGN_INFO.phone}`} 
             className="text-base sm:text-lg font-bold hover:underline pb-2 sm:pb-0"
