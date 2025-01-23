@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
+import Home from "@/pages/home";
 import { NavigationMenu, NavigationMenuItem, NavigationMenuList, NavigationMenuLink } from "@/components/ui/navigation-menu";
 import { Link } from "wouter";
 
@@ -31,6 +32,7 @@ function Router() {
     <div>
       <Navigation />
       <Switch>
+        <Route path="/" component={Home} />
         <Route path="/dashboard" component={Dashboard} />
         <Route component={NotFound} />
       </Switch>
