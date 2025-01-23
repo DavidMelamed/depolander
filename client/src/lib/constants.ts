@@ -3,9 +3,9 @@ import type { CampaignInfo, MedicalEvidence, TrustIndicator } from "./types/camp
 export const CAMPAIGN_INFO: CampaignInfo = {
   title: "Depo-Provera Brain Tumor Lawsuit Claims",
   phone: "(800) 555-0123",
-  description: "A groundbreaking scientific study reveals that Depo-Provera users face a 5.5 times higher risk of developing meningioma brain tumors. If you or a loved one used Depo-Provera and were diagnosed with a meningioma, you may be entitled to significant compensation.",
-  mainHeadline: "Important Update for Depo-Provera Users",
-  subHeadline: "Brain Tumor Risk Revealed in New Medical Study",
+  description: "URGENT: If you or a loved one developed a meningioma after using Depo-Provera, you may be entitled to significant compensation. Recent studies show users face a 550% higher risk of brain tumors. Time is limited to file your claim.",
+  mainHeadline: "WARNING: Depo-Provera Users At Risk",
+  subHeadline: "New Study Links Birth Control Drug to Dangerous Brain Tumors",
   symptoms: [
     "Severe Headaches",
     "Vision Problems",
@@ -23,48 +23,53 @@ export const CAMPAIGN_INFO: CampaignInfo = {
   ],
   keyFacts: [
     "Scientific evidence shows 550% increased risk of brain tumors",
-    "Cases of inoperable tumors reported due to critical locations",
-    "Long-term usage linked to higher risk",
-    "Many cases require invasive brain surgery",
-    "Safer alternatives were available but not promoted"
+    "Many victims required emergency brain surgery",
+    "Manufacturer failed to warn about known risks",
+    "Time-limited window to file your claim",
+    "Free case evaluation available 24/7"
   ],
-  timeline: "A new wave of lawsuits is being filed as of January 2025. Don't wait to learn about your legal rights.",
+  timeline: "URGENT: Legal deadlines may limit your time to file. Don't wait - call now to protect your rights.",
   legalStats: [
-    { number: "2-3M", label: "Annual Prescriptions" },
+    { number: "$500K+", label: "Average Settlement" },
     { number: "550%", label: "Increased Risk" },
-    { number: "30+", label: "Years on Market" },
-    { number: "100s", label: "Active Cases" }
+    { number: "1000s", label: "Affected Users" },
+    { number: "FREE", label: "Case Review" }
   ],
   settlementInfo: {
     averageAmount: "Estimated $150,000 to $500,000",
     range: "$50,000 to over $1,000,000",
     timeline: "12-24 months from filing to settlement",
     process: [
-      "Free initial case evaluation",
-      "Medical record review by expert attorneys",
-      "Case filing and documentation",
-      "Settlement negotiations or trial preparation",
-      "Resolution and compensation distribution"
+      "Free 5-minute case evaluation",
+      "No upfront costs or fees",
+      "Experienced legal team reviews your case",
+      "We handle all paperwork and legal proceedings",
+      "You receive your compensation"
     ]
   }
 };
 
 export const TRUST_BADGES: TrustIndicator[] = [
-  { title: "Free Case Evaluation", icon: "PhoneCall" },
-  { title: "No Fees Unless You Win", icon: "Shield" },
-  { title: "24/7 Legal Support", icon: "Clock" },
-  { title: "Nationwide Representation", icon: "Scale" }
+  { title: "24/7 Free Case Review", icon: "PhoneCall" },
+  { title: "No Fee Unless You Win", icon: "Shield" },
+  { title: "Maximum Compensation", icon: "DollarSign" },
+  { title: "5-Star Legal Team", icon: "Star" }
 ];
 
 export const REVIEWS = [
   {
     name: "Sarah M.",
-    text: "The legal team was incredibly supportive throughout my case. They helped me understand my rights and fought for the compensation I deserved.",
+    text: "After my brain tumor diagnosis, I was devastated. The legal team fought tirelessly for me and secured a settlement that covered all my medical expenses.",
     rating: 5
   },
   {
     name: "Jennifer R.",
-    text: "After my diagnosis, I didn't know where to turn. They guided me through every step of the legal process with compassion and expertise.",
+    text: "I had no idea Depo-Provera could cause brain tumors. Thanks to their expert legal help, I received the compensation I deserved for my suffering.",
+    rating: 5
+  },
+  {
+    name: "Maria L.",
+    text: "The process was simple and stress-free. They handled everything while I focused on my recovery. I'm grateful for their support and expertise.",
     rating: 5
   }
 ];
@@ -72,12 +77,12 @@ export const REVIEWS = [
 export const MEDICAL_EVIDENCE: MedicalEvidence = {
   studyTitle: "Association Between Medroxyprogesterone Acetate and Intracranial Meningioma Risk",
   studyDate: "2024",
-  studyUrl: "https://www.example.com/depo-provera-study", // Replace with actual study URL
+  studyUrl: "https://www.example.com/depo-provera-study",
   keyFindings: [
-    "5.5-fold increased risk of meningioma in long-term users",
-    "Dose-response relationship identified",
-    "Risk increases with duration of use",
-    "Higher risk with 150mg dosage compared to lower-dose alternatives"
+    "550% higher risk of meningioma in long-term users",
+    "Risk increases with each injection",
+    "Brain tumors found in critical locations",
+    "Many cases require invasive surgery"
   ]
 };
 
