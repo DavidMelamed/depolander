@@ -6,6 +6,7 @@ import ContentAccordion from "@/components/content-accordion";
 import CallBanner from "@/components/call-banner";
 import { CAMPAIGN_INFO, DISCLAIMER } from "@/lib/constants";
 import { ShieldCheck } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Home() {
   return (
@@ -47,6 +48,11 @@ export default function Home() {
                 Consult with qualified healthcare providers regarding medical decisions. 
                 Past results do not guarantee future outcomes.
               </p>
+              <div className="pt-4 flex items-center justify-center">
+                <Link href="/privacy">
+                  <a className="text-primary hover:underline">Privacy Policy</a>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
