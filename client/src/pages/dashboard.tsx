@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import SectionEditor from "@/components/section-editor";
+import { ColorSchemeSelector } from "@/components/ui/color-scheme-selector";
 
 interface ContentVersion {
   id: number;
@@ -48,7 +49,16 @@ interface Template {
   id: number;
   name: string;
   description: string;
-  structure: any;
+  structure: {
+    colorScheme?: {
+      primary: string;
+      secondary: string;
+      background: string;
+      text: string;
+      accent: string;
+    };
+    sections: any[];
+  };
   defaultStyles: any;
   createdAt: string;
   updatedAt: string;
@@ -445,7 +455,33 @@ export default function Dashboard() {
 
                     {/* Section Editor */}
                     {selectedTemplate === template.id && (
-                      <div className="mt-4">
+                      <div className="mt-4 space-y-4">
+                        <ColorSchemeSelector
+                          initialColors={template.structure.colorScheme}
+                          onChange={async (colors) => {
+                            try {
+                              await fetch(`/api/templates/${template.id}/color-scheme`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify(colors),
+                              });
+
+                              queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
+
+                              toast({
+                                title: "Success",
+                                description: "Color scheme updated",
+                              });
+                            } catch (error) {
+                              console.error("Error updating color scheme:", error);
+                              toast({
+                                title: "Error",
+                                description: "Failed to update color scheme",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                        />
                         <SectionEditor
                           sections={template.sections || template.structure.sections}
                           onUpdate={async (updatedSections) => {
