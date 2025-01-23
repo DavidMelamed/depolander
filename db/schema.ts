@@ -17,11 +17,11 @@ export const adminUsers = pgTable("admin_users", {
 export const colorSchemes = pgTable("color_schemes", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  primary: text("primary").notNull(),
-  secondary: text("secondary").notNull(),
-  background: text("background").notNull(),
-  text: text("text").notNull(),
-  accent: text("accent").notNull(),
+  primaryColor: text("primary_color").notNull(),
+  secondaryColor: text("secondary_color").notNull(),
+  backgroundColor: text("background_color").notNull(),
+  textColor: text("text_color").notNull(),
+  accentColor: text("accent_color").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -62,17 +62,6 @@ export const templates = pgTable("templates", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const states = pgTable("states", {
-  id: serial("id").primaryKey(),
-  code: text("code").notNull().unique(),
-  name: text("name").notNull(),
-  region: text("region").notNull(),
-  metadata: jsonb("metadata").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-// Tables with foreign keys
 export const sections = pgTable("sections", {
   id: serial("id").primaryKey(),
   templateId: integer("template_id").notNull().references(() => templates.id),
@@ -94,7 +83,6 @@ export const contentVersions = pgTable("content_versions", {
   version: integer("version").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   language: text("language").notNull().default('en'),
-  sourceVersionId: integer("source_version_id").references(() => contentVersions.id),
   templateId: integer("template_id").references(() => templates.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
