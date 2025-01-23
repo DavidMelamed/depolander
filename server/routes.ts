@@ -6,6 +6,8 @@ import { eq, and, desc } from "drizzle-orm";
 import { isAdmin, isAuthenticated, isNotAuthenticated } from "./middleware/auth";
 import passport from "passport";
 import bcrypt from "bcryptjs";
+import { cdnService } from "./services/cdn";
+import { getAssetUrl } from "./middleware/cdn";
 
 export function registerRoutes(app: Express): Server {
   // Public routes (no auth required)
@@ -170,7 +172,25 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Template not found" });
       }
 
-      res.json(template);
+      // Transform content to include CDN URLs for assets
+      const transformedTemplate = {
+        ...template,
+        sections: template.sections.map(section => ({
+          ...section,
+          content: {
+            ...section.content,
+            // Transform any image URLs in content to CDN URLs
+            ...(section.content.imageUrl && {
+              imageUrl: getAssetUrl(section.content.imageUrl as string)
+            }),
+            ...(section.content.backgroundImage && {
+              backgroundImage: getAssetUrl(section.content.backgroundImage as string)
+            })
+          }
+        }))
+      };
+
+      res.json(transformedTemplate);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch template" });
     }
@@ -204,16 +224,11 @@ export function registerRoutes(app: Express): Server {
       const version = await db.query.contentVersions.findFirst({
         where: eq(contentVersions.id, parseInt(id)),
         with: {
-          refreshSchedules: true,
-          updateSuggestions: true,
-          languageVersions: true,
           template: {
             with: {
               sections: true,
             },
           },
-          deployments: true,
-          assets: true,
         },
       });
 
@@ -221,7 +236,19 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Content version not found" });
       }
 
-      res.json(version);
+      // Transform content to use CDN URLs
+      const transformedVersion = {
+        ...version,
+        content: {
+          ...version.content,
+          // Transform any image URLs in content
+          ...(version.content.imageUrl && {
+            imageUrl: getAssetUrl(version.content.imageUrl as string)
+          })
+        }
+      };
+
+      res.json(transformedVersion);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch content version" });
     }
@@ -693,6 +720,24 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error starting batch localization:", error);
       res.status(500).json({ error: "Failed to start batch localization" });
+    }
+  });
+
+  // Asset handling through CDN
+  app.get("/api/assets/:assetId", async (req, res) => {
+    try {
+      const { assetId } = req.params;
+      const { transform } = req.query;
+
+      // Get asset URL (will use local path in development)
+      const assetUrl = getAssetUrl(assetId, {
+        transformation: transform ? JSON.parse(transform as string) : undefined
+      });
+
+      res.json({ url: assetUrl });
+    } catch (error) {
+      console.error("Error serving asset:", error);
+      res.status(500).json({ error: "Failed to serve asset" });
     }
   });
 

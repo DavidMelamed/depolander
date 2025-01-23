@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import session from "express-session";
 import passport from "passport";
 import MemoryStore from "memorystore";
+import { cdnMiddleware } from "./middleware/cdn";
 
 const SessionStore = MemoryStore(session);
 
@@ -27,6 +28,9 @@ app.use(
 // Initialize passport
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Initialize CDN middleware
+app.use(cdnMiddleware());
 
 app.use((req, res, next) => {
   const start = Date.now();
